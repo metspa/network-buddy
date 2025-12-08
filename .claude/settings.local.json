@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(stripe login:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:*)",
+      "Bash(git show:*)",
+      "Bash(npm install:*)",
+      "Bash(git fetch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git config:*)",
+      "Bash(vercel login:*)",
+      "Bash(vercel --prod:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(git remote:*)",
+      "Bash(if exist .vercel rmdir /s /q .vercel)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel env:*)",
+      "Bash(npx cap init:*)",
+      "Bash(npx cap add ios)",
+      "Bash(test:*)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(xargs ls:*)",
+      "Bash(npm view:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
