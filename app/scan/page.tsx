@@ -40,6 +40,22 @@ type GMBData = {
   priceRange?: string;
 };
 
+type AutoFillData = {
+  filled: {
+    firstName?: string | null;
+    lastName?: string | null;
+    company?: string | null;
+    jobTitle?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  };
+  autoFilledFields: string[];
+  source: string;
+  confidence: number;
+  summary: string;
+  decisionMakers?: any[];
+};
+
 export default function ScanPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('capture');
@@ -58,6 +74,7 @@ export default function ScanPage() {
   const [enrichmentPhase, setEnrichmentPhase] = useState<string>('');
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
 
   // Check authentication on mount
   useEffect(() => {
@@ -135,10 +152,16 @@ export default function ScanPage() {
       const ocrData = await ocrResponse.json();
       setOcrResult(ocrData);
 
-      // Step 3: Start preview enrichment (lightweight, no save yet)
-      // This will fetch GMB data to show user before they save
+      // Step 3: Start preview enrichment with auto-fill
+      // This will fetch GMB data AND auto-fill missing contact info
       setEnrichmentPhase('Looking up company information...');
-      startPreviewEnrichment(ocrData.fields.company);
+      startPreviewEnrichment(ocrData.fields, (filledFields) => {
+        // Update OCR result with auto-filled data
+        setOcrResult((prev: any) => ({
+          ...prev,
+          fields: { ...prev.fields, ...filledFields },
+        }));
+      });
 
       setStep('edit');
     } catch (err) {
@@ -148,24 +171,43 @@ export default function ScanPage() {
     }
   };
 
-  // Preview enrichment - fetch GMB data before saving contact
-  const startPreviewEnrichment = async (company: string | null) => {
-    console.log('🔍 Starting preview enrichment for company:', company);
+  // Preview enrichment - fetch GMB data and auto-fill missing contact info
+  const startPreviewEnrichment = async (
+    fields: { firstName?: string; lastName?: string; company?: string; email?: string; phone?: string; jobTitle?: string },
+    onAutoFill?: (filled: Record<string, string>) => void
+  ) => {
+    console.log('🔍 Starting preview enrichment with fields:', fields);
 
-    if (!company || company.trim().length === 0) {
-      console.log('❌ No company name, skipping enrichment');
+    // Check if we need auto-fill (missing name or contact info)
+    const needsAutoFill = !fields.firstName || !fields.lastName || !fields.email || !fields.phone;
+    const hasCompanyOrEmail = fields.company || fields.email;
+
+    if (!hasCompanyOrEmail) {
+      console.log('❌ No company or email, skipping enrichment');
       setEnrichmentPhase('');
       return;
     }
 
     try {
-      setEnrichmentPhase(`Searching for "${company}" on Google...`);
+      if (needsAutoFill) {
+        setEnrichmentPhase('Finding contact information...');
+      } else {
+        setEnrichmentPhase(`Searching for "${fields.company}" on Google...`);
+      }
 
-      // Fetch GMB data directly (this is fast, 3-5 seconds)
+      // Fetch GMB data AND auto-fill missing info
       const response = await fetch('/api/enrich/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company }),
+        body: JSON.stringify({
+          company: fields.company,
+          firstName: fields.firstName,
+          lastName: fields.lastName,
+          email: fields.email,
+          phone: fields.phone,
+          jobTitle: fields.jobTitle,
+          autoFill: needsAutoFill,
+        }),
       });
 
       console.log('📡 Preview API response status:', response.status);
@@ -174,8 +216,28 @@ export default function ScanPage() {
         const data = await response.json();
         console.log('📊 Preview API data:', data);
 
+        // Handle auto-fill results
+        if (data.autoFill && data.autoFill.autoFilledFields?.length > 0) {
+          console.log('🤖 Auto-filled fields:', data.autoFill.autoFilledFields);
+          setAutoFillData(data.autoFill);
+          setEnrichmentPhase(data.autoFill.summary || 'Found decision maker!');
+
+          // Update the form with auto-filled data
+          if (onAutoFill && data.autoFill.filled) {
+            const filledFields: Record<string, string> = {};
+            if (data.autoFill.filled.firstName) filledFields.firstName = data.autoFill.filled.firstName;
+            if (data.autoFill.filled.lastName) filledFields.lastName = data.autoFill.filled.lastName;
+            if (data.autoFill.filled.company) filledFields.company = data.autoFill.filled.company;
+            if (data.autoFill.filled.jobTitle) filledFields.jobTitle = data.autoFill.filled.jobTitle;
+            if (data.autoFill.filled.email) filledFields.email = data.autoFill.filled.email;
+            if (data.autoFill.filled.phone) filledFields.phone = data.autoFill.filled.phone;
+            onAutoFill(filledFields);
+          }
+        }
+
+        // Handle GMB data
         if (data.gmb && data.gmb.rating) {
-          console.log(`✅ Found GMB data: ${data.gmb.rating} stars, ${data.gmb.review_count} reviews, ${data.gmb.reviews?.length || 0} detailed reviews, ${data.gmb.photos?.length || 0} photos`);
+          console.log(`✅ Found GMB data: ${data.gmb.rating} stars, ${data.gmb.review_count} reviews`);
           setGmbData({
             name: data.gmb.name,
             rating: data.gmb.rating || 0,
@@ -189,12 +251,13 @@ export default function ScanPage() {
             categories: data.gmb.categories || [],
             priceRange: data.gmb.price_range,
           });
-          setEnrichmentPhase(`Found ${data.gmb.review_count || 0} reviews!`);
-        } else {
-          console.log('⚠️ No GMB data found for company');
-          setEnrichmentPhase('No reviews found (that\'s okay!)');
 
-          // Clear message after 3 seconds
+          if (!data.autoFill?.autoFilledFields?.length) {
+            setEnrichmentPhase(`Found ${data.gmb.review_count || 0} reviews!`);
+          }
+        } else if (!data.autoFill?.autoFilledFields?.length) {
+          console.log('⚠️ No GMB data found');
+          setEnrichmentPhase('No reviews found (that\'s okay!)');
           setTimeout(() => setEnrichmentPhase(''), 3000);
         }
       } else {
@@ -736,6 +799,37 @@ export default function ScanPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-Fill Indicator */}
+            {autoFillData && autoFillData.autoFilledFields.length > 0 && (
+              <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-blue-900">
+                      Auto-filled from {autoFillData.source === 'apollo' ? 'Apollo.io' : autoFillData.source === 'perplexity' ? 'company research' : 'multiple sources'}
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      {autoFillData.summary}
+                    </p>
+                    {autoFillData.decisionMakers && autoFillData.decisionMakers.length > 1 && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        {autoFillData.decisionMakers.length - 1} other decision maker{autoFillData.decisionMakers.length > 2 ? 's' : ''} found
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {autoFillData.confidence}% confidence
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1,9 +1,10 @@
-// Preview enrichment API - fetches GMB data before saving contact
+// Preview enrichment API - fetches GMB data and auto-fills missing contact info
 // This gives users immediate feedback about the company while they edit OCR results
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { searchGoogleMapsBusiness } from '@/lib/services/serpapi-gmb';
 import { getCachedData, setCachedData } from '@/lib/enrichment/cache';
+import { autoFillContact, getAutoFillSummary, type OCRData } from '@/lib/enrichment/auto-fill';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,18 +18,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { company } = await request.json();
+    const body = await request.json();
+    const { company, firstName, lastName, email, phone, jobTitle, website, autoFill = false } = body;
 
-    if (!company) {
-      return NextResponse.json({ gmb: null });
+    // Auto-fill missing contact data if requested
+    let autoFillResult = null;
+    if (autoFill) {
+      const ocrData: OCRData = {
+        firstName,
+        lastName,
+        company,
+        jobTitle,
+        email,
+        phone,
+        website,
+      };
+
+      console.log('🤖 Auto-fill requested with data:', ocrData);
+      autoFillResult = await autoFillContact(ocrData);
+      console.log('✨ Auto-fill result:', {
+        autoFilledFields: autoFillResult.autoFilledFields,
+        source: autoFillResult.source,
+        confidence: autoFillResult.confidence,
+        decisionMakersFound: autoFillResult.decisionMakers?.length || 0,
+      });
+    }
+
+    // Use auto-filled company if original was empty
+    const effectiveCompany = autoFillResult?.filled?.company || company;
+
+    if (!effectiveCompany) {
+      return NextResponse.json({
+        gmb: null,
+        autoFill: autoFillResult
+          ? {
+              filled: autoFillResult.filled,
+              autoFilledFields: autoFillResult.autoFilledFields,
+              source: autoFillResult.source,
+              confidence: autoFillResult.confidence,
+              summary: getAutoFillSummary(autoFillResult),
+              decisionMakers: autoFillResult.decisionMakers,
+            }
+          : null,
+      });
     }
 
     // Check cache first (14-day TTL)
-    const cacheKey = `gmb:${company}`.toLowerCase().replace(/\s+/g, '_');
+    const cacheKey = `gmb:${effectiveCompany}`.toLowerCase().replace(/\s+/g, '_');
     const cached = await getCachedData(cacheKey, 'gmb');
 
     if (cached) {
-      console.log('📦 Returning cached GMB data for:', company);
+      console.log('📦 Returning cached GMB data for:', effectiveCompany);
       return NextResponse.json({
         gmb: {
           name: cached.name,
@@ -44,12 +84,22 @@ export async function POST(request: NextRequest) {
           categories: cached.categories || [],
           price_range: cached.price_range,
         },
+        autoFill: autoFillResult
+          ? {
+              filled: autoFillResult.filled,
+              autoFilledFields: autoFillResult.autoFilledFields,
+              source: autoFillResult.source,
+              confidence: autoFillResult.confidence,
+              summary: getAutoFillSummary(autoFillResult),
+              decisionMakers: autoFillResult.decisionMakers,
+            }
+          : null,
       });
     }
 
     // Fetch fresh GMB data
-    console.log('🔍 Fetching fresh GMB data for:', company);
-    const gmbResult = await searchGoogleMapsBusiness(company);
+    console.log('🔍 Fetching fresh GMB data for:', effectiveCompany);
+    const gmbResult = await searchGoogleMapsBusiness(effectiveCompany);
 
     console.log('📊 GMB Result:', {
       success: gmbResult.success,
@@ -59,6 +109,17 @@ export async function POST(request: NextRequest) {
       reviewsExtracted: gmbResult.reviews?.length || 0,
       photosExtracted: gmbResult.photos?.length || 0,
     });
+
+    const autoFillData = autoFillResult
+      ? {
+          filled: autoFillResult.filled,
+          autoFilledFields: autoFillResult.autoFilledFields,
+          source: autoFillResult.source,
+          confidence: autoFillResult.confidence,
+          summary: getAutoFillSummary(autoFillResult),
+          decisionMakers: autoFillResult.decisionMakers,
+        }
+      : null;
 
     if (gmbResult.success) {
       // Cache for 14 days
@@ -79,15 +140,16 @@ export async function POST(request: NextRequest) {
           categories: gmbResult.categories || [],
           price_range: gmbResult.price_range,
         },
+        autoFill: autoFillData,
       });
     }
 
     // No GMB data found
-    return NextResponse.json({ gmb: null });
+    return NextResponse.json({ gmb: null, autoFill: autoFillData });
   } catch (error) {
     console.error('Preview enrichment error:', error);
 
     // Don't fail the request - just return no data
-    return NextResponse.json({ gmb: null });
+    return NextResponse.json({ gmb: null, autoFill: null });
   }
 }
