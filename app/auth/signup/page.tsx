@@ -1,17 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signUp, signInWithGoogle, signInWithApple } from '@/lib/supabase/auth'
 
-export default function SignUpPage() {
+function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +29,9 @@ export default function SignUpPage() {
     } else {
       setMessage('Check your email for the confirmation link!')
       setLoading(false)
-      // Optionally redirect after a delay
+      // Redirect to login with returnUrl preserved
       setTimeout(() => {
-        router.push('/auth/login')
+        router.push(returnUrl ? `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/auth/login')
       }, 3000)
     }
   }
@@ -38,7 +40,7 @@ export default function SignUpPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await signInWithGoogle()
+    const { error } = await signInWithGoogle(returnUrl || undefined)
 
     if (error) {
       setError(error.message)
@@ -51,7 +53,7 @@ export default function SignUpPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await signInWithApple()
+    const { error } = await signInWithApple(returnUrl || undefined)
 
     if (error) {
       setError(error.message)
@@ -166,12 +168,27 @@ export default function SignUpPage() {
           </div>
 
           <div className="text-center text-sm">
-            <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300">
+            <Link
+              href={returnUrl ? `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/auth/login'}
+              className="font-medium text-blue-400 hover:text-blue-300"
+            >
               Already have an account? Sign in
             </Link>
           </div>
         </form>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#2c2f33]">
+        <div className="text-gray-400">Loading...</div>
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   )
 }
