@@ -35,6 +35,13 @@ export default function PricingButton({ plan, cta, featured }: PricingButtonProp
 
       if (data.error) {
         console.error('Checkout error:', data.error);
+
+        // If unauthorized, redirect to signup (they need an account first)
+        if (data.error === 'Unauthorized' || response.status === 401) {
+          router.push(`/auth/signup?returnUrl=${encodeURIComponent(`/dashboard?startCheckout=${plan}`)}`);
+          return;
+        }
+
         alert('Failed to start checkout. Please try again.');
         setLoading(false);
         return;

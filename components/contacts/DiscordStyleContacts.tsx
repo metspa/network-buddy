@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SubscriptionBanner from '@/components/subscription/SubscriptionBanner';
 
 type Contact = {
@@ -40,6 +40,7 @@ type DiscordStyleContactsProps = {
 
 export default function DiscordStyleContacts({ contacts, error }: DiscordStyleContactsProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -78,6 +79,37 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
     }
     fetchCategories();
   }, []);
+
+  // Auto-start checkout if redirected from pricing page
+  useEffect(() => {
+    const startCheckout = searchParams.get('startCheckout');
+    if (startCheckout && (startCheckout === 'growth' || startCheckout === 'pro')) {
+      // Clear the URL parameter
+      router.replace('/dashboard', { scroll: false });
+
+      // Start checkout
+      async function initiateCheckout() {
+        try {
+          const response = await fetch('/api/stripe/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: startCheckout }),
+          });
+
+          const data = await response.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else if (data.error) {
+            console.error('Checkout error:', data.error);
+            alert('Failed to start checkout: ' + data.error);
+          }
+        } catch (err) {
+          console.error('Checkout error:', err);
+        }
+      }
+      initiateCheckout();
+    }
+  }, [searchParams, router]);
 
   // Handle creating a new category
   const handleCreateCategory = async () => {

@@ -29,7 +29,11 @@
       "Bash(xargs ls:*)",
       "Bash(npm view:*)",
       "Bash(cat:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(cmdkey /delete:git:https://github.com:*)",
+      "Bash(ipconfig:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
