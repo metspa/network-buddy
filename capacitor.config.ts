@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Network Buddy',
   webDir: 'out',
   server: {
-    // For testing, point to your deployed Vercel URL
-    url: 'https://network-buddy-d7lquuzqd-metspagmailcoms-projects.vercel.app',
+    // Point to production Vercel URL
+    url: 'https://network-buddy-app.vercel.app',
     cleartext: true
   },
   ios: {
