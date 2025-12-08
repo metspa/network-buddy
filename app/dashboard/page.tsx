@@ -1,6 +1,15 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import DiscordStyleContacts from '@/components/contacts/DiscordStyleContacts';
+
+function DashboardLoading() {
+  return (
+    <div className="flex h-screen bg-[#36393f] items-center justify-center">
+      <div className="text-gray-400">Loading dashboard...</div>
+    </div>
+  );
+}
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -21,5 +30,9 @@ export default async function Dashboard() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
-  return <DiscordStyleContacts contacts={contacts || []} error={error?.message} />;
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DiscordStyleContacts contacts={contacts || []} error={error?.message} />
+    </Suspense>
+  );
 }
