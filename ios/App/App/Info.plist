@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Network Buddy needs camera access to scan business cards</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Network Buddy needs photo library access to select business card images</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Network Buddy needs permission to save images to your photo library</string>
 </dict>
 </plist>
