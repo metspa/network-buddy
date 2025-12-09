@@ -413,10 +413,10 @@ export default function ScanPage() {
   // Show loading while checking auth
   if (isCheckingAuth) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <svg
-            className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin"
+            className="w-12 h-12 text-violet-500 mx-auto mb-4 animate-spin"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -434,14 +434,14 @@ export default function ScanPage() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-400">Loading...</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20">
+    <main className="min-h-screen bg-gray-900 pb-20">
       {/* Header */}
       <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700 sticky top-0 z-10">
         <div className="max-w-screen-lg mx-auto px-4 py-3 flex items-center gap-4">
@@ -472,10 +472,10 @@ export default function ScanPage() {
       <div className="max-w-screen-lg mx-auto px-4 py-8">
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <svg
-                className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -486,8 +486,8 @@ export default function ScanPage() {
                 />
               </svg>
               <div>
-                <p className="text-sm font-semibold text-red-900">Error</p>
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm font-semibold text-red-300">Error</p>
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             </div>
           </div>
@@ -495,7 +495,7 @@ export default function ScanPage() {
 
         {/* Step 1: Capture */}
         {step === 'capture' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="py-4">
             <CameraCapture onCapture={handleCapture} />
           </div>
         )}
