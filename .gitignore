@@ -47,3 +47,11 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# iOS signing certificates (NEVER commit these!)
+*.p12
+*.key
+*.cer
+*.csr
+*.mobileprovision
+ios_distribution.*
