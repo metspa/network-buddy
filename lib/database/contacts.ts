@@ -36,6 +36,8 @@ export type Contact = {
   recent_news: string[] | null;
   ai_summary: string | null;
   icebreakers: string[] | null;
+  sms_templates: { message: string }[] | null;
+  email_templates: { subject: string; body: string }[] | null;
   is_service_provider: boolean;
   service_category: string | null;
   reputation_score: number | null;
