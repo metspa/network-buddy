@@ -1,9 +1,29 @@
 // OpenAI service for generating AI summaries and conversation starters
 import OpenAI from 'openai';
 
+export type SmsTemplate = {
+  message: string; // Short message under 160 chars
+};
+
+export type EmailTemplate = {
+  subject: string;
+  body: string;
+};
+
 export type ContactSummaryResult = {
   summary: string;
   icebreakers: string[];
+  sms_templates?: SmsTemplate[];
+  email_templates?: EmailTemplate[];
+};
+
+export type UserPersonalization = {
+  nickname?: string | null;
+  occupation?: string | null;
+  about_me?: string | null;
+  company_name?: string | null;
+  industry?: string | null;
+  communication_tone?: string | null;
 };
 
 /**
@@ -18,47 +38,82 @@ export async function generateContactSummary(contactData: {
   companyDescription?: string | null;
   companyIndustry?: string | null;
   companyNews?: string[];
-}): Promise<ContactSummaryResult> {
+}, userPersonalization?: UserPersonalization): Promise<ContactSummaryResult> {
   try {
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
     const fullName = [contactData.firstName, contactData.lastName].filter(Boolean).join(' ') || 'Unknown';
+    const contactFirstName = contactData.firstName || 'there';
 
     // Build context from available data
     const context = buildContext(contactData);
 
-    const prompt = `You are helping a networker prepare for a conversation at a networking event.
+    // Build personalization context
+    const personalizationContext = buildPersonalizationContext(userPersonalization);
+    const tone = userPersonalization?.communication_tone || 'professional';
+    const senderName = userPersonalization?.nickname || 'the sender';
 
+    const prompt = `You are writing personalized follow-up messages for ${senderName} who just met ${fullName} at a networking event.
+
+=== ABOUT THE SENDER (WHO IS WRITING THE MESSAGE) ===
+${personalizationContext || 'No personalization set - use generic professional tone.'}
+
+=== ABOUT THE CONTACT (WHO THEY MET) ===
 ${context}
 
-Your task:
-1. Generate a concise 150-word summary about this person and their company
-2. Create 5 specific, thoughtful conversation starters or questions
+=== YOUR TASK ===
+1. Generate a concise 150-word summary about ${fullName} and their company
+2. Create 3 short TEXT MESSAGE templates (under 160 characters each)
+3. Create 3 EMAIL templates with subject lines and bodies
 
-Guidelines for summary:
-- Focus on their role, company, and industry
-- Highlight interesting or notable aspects
-- Keep it professional and factual
-- Be concise but informative
+=== TONE: ${tone.toUpperCase()} ===
+${tone === 'casual' ? '- Relaxed, conversational, like texting a friend\n- Use contractions, informal language\n- Emojis are OK sparingly' : ''}
+${tone === 'friendly' ? '- Warm and approachable but still professional\n- Personable but not too casual\n- Show genuine interest' : ''}
+${tone === 'professional' ? '- Polished and business-appropriate\n- Formal but not stiff\n- Focus on value and mutual benefit' : ''}
 
-Guidelines for icebreakers:
-- Make them specific to this person/company (not generic)
-- Mix professional and conversational tones
-- Include questions about their work, industry trends, or recent news
-- Make them natural conversation starters, not interrogations
-- Avoid yes/no questions
+=== GUIDELINES FOR TEXT MESSAGES ===
+- MUST be under 160 characters
+- Sound like ${senderName} is writing them personally
+- Reference their shared context (industry, event, mutual interests)
+- Include a soft call-to-action
+- Make it feel authentic, not templated
 
-Return your response as JSON in this exact format:
+=== GUIDELINES FOR EMAILS ===
+- Sound like ${senderName} wrote them personally
+- Reference who ${senderName} is and what they do
+- Create genuine connection points based on both people's backgrounds
+- Subject lines should be personal, not generic "Great meeting you"
+- Body: 2-3 short paragraphs with clear value proposition
+- Sign off appropriately for the tone
+
+Return JSON in this exact format:
 {
-  "summary": "150-word summary here",
+  "summary": "150-word summary about ${fullName} here",
   "icebreakers": [
-    "First conversation starter...",
-    "Second conversation starter...",
-    "Third conversation starter...",
-    "Fourth conversation starter...",
-    "Fifth conversation starter..."
+    "Conversation starter that connects both people's interests...",
+    "Another relevant talking point...",
+    "Third conversation opener..."
+  ],
+  "sms_templates": [
+    { "message": "Hey ${contactFirstName}! [Personalized message under 160 chars]" },
+    { "message": "Second text template..." },
+    { "message": "Third text template..." }
+  ],
+  "email_templates": [
+    {
+      "subject": "[Personalized subject line]",
+      "body": "Hi ${contactFirstName},\\n\\n[Personalized body that sounds like ${senderName} wrote it]\\n\\n[Signature]"
+    },
+    {
+      "subject": "Subject 2...",
+      "body": "Body 2..."
+    },
+    {
+      "subject": "Subject 3...",
+      "body": "Body 3..."
+    }
   ]
 }`;
 
@@ -80,19 +135,41 @@ Return your response as JSON in this exact format:
     return {
       summary: parsed.summary || 'No summary generated.',
       icebreakers: Array.isArray(parsed.icebreakers) ? parsed.icebreakers : [],
+      sms_templates: Array.isArray(parsed.sms_templates) ? parsed.sms_templates : [],
+      email_templates: Array.isArray(parsed.email_templates) ? parsed.email_templates : [],
     };
   } catch (error) {
     console.error('OpenAI summary generation error:', error);
 
     // Return fallback summary
+    const firstName = contactData.firstName || '';
+    const company = contactData.company || 'your company';
+
     return {
-      summary: `${contactData.firstName || ''} ${contactData.lastName || ''} works as ${contactData.jobTitle || 'a professional'} at ${contactData.company || 'their company'}. Connect with them to learn more about their work and expertise.`,
+      summary: `${firstName} ${contactData.lastName || ''} works as ${contactData.jobTitle || 'a professional'} at ${company}. Connect with them to learn more about their work and expertise.`,
       icebreakers: [
         `What brought you to this event today?`,
-        `How long have you been with ${contactData.company || 'your company'}?`,
+        `How long have you been with ${company}?`,
         `What are some of the biggest challenges in ${contactData.companyIndustry || 'your industry'} right now?`,
-        `I'd love to hear more about your role as ${contactData.jobTitle || 'a professional'}.`,
-        `What's the most exciting project you're working on at the moment?`,
+      ],
+      sms_templates: [
+        { message: `Hey${firstName ? ` ${firstName}` : ''}! Great meeting you. Would love to grab coffee and continue our chat. Free this week?` },
+        { message: `Hi${firstName ? ` ${firstName}` : ''}! Following up from our conversation. Let me know if you'd like to connect again soon!` },
+        { message: `Nice meeting you${firstName ? `, ${firstName}` : ''}! Let's stay in touch. Coffee or a quick call sometime?` },
+      ],
+      email_templates: [
+        {
+          subject: `Great meeting you${firstName ? `, ${firstName}` : ''}!`,
+          body: `Hi${firstName ? ` ${firstName}` : ''},\n\nIt was a pleasure meeting you recently. I really enjoyed our conversation.\n\nI'd love to continue our discussion over coffee or a quick call. Would you be available sometime this week?\n\nLooking forward to staying in touch!\n\nBest regards`,
+        },
+        {
+          subject: `Following up from our conversation`,
+          body: `Hi${firstName ? ` ${firstName}` : ''},\n\nI wanted to reach out and say it was great connecting with you. Your insights about ${company} were really interesting.\n\nWould love to explore ways we might be able to help each other. Let me know if you have time for a quick chat.\n\nBest regards`,
+        },
+        {
+          subject: `Let's connect!`,
+          body: `Hi${firstName ? ` ${firstName}` : ''},\n\nHope this finds you well! I've been thinking about our conversation and would love to continue it.\n\nAre you free for coffee or a call in the coming weeks?\n\nBest regards`,
+        },
       ],
     };
   }
@@ -196,6 +273,41 @@ Guidelines for recommendation:
       reasoning: 'Low rating indicates customer dissatisfaction',
     };
   }
+}
+
+/**
+ * Build personalization context from user profile
+ */
+function buildPersonalizationContext(personalization?: UserPersonalization): string {
+  if (!personalization) return '';
+
+  const parts: string[] = [];
+
+  if (personalization.nickname) {
+    parts.push(`Name: ${personalization.nickname}`);
+  }
+
+  if (personalization.occupation) {
+    parts.push(`Role: ${personalization.occupation}`);
+  }
+
+  if (personalization.company_name) {
+    parts.push(`Company: ${personalization.company_name}`);
+  }
+
+  if (personalization.industry) {
+    parts.push(`Industry: ${personalization.industry}`);
+  }
+
+  if (personalization.about_me) {
+    parts.push(`\nAbout them:\n${personalization.about_me}`);
+  }
+
+  if (personalization.communication_tone) {
+    parts.push(`\nPreferred tone: ${personalization.communication_tone}`);
+  }
+
+  return parts.join('\n');
 }
 
 /**

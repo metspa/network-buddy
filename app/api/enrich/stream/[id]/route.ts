@@ -63,6 +63,7 @@ export async function GET(
         });
 
         // Run parallel enrichment with progress callback
+        // Pass user.id to fetch personalization for AI message generation
         const result = await enrichContactParallel(contactId, (phase, message, data) => {
           // Stream progress updates in real-time
           sendEvent({
@@ -71,7 +72,7 @@ export async function GET(
             message,
             data,
           });
-        });
+        }, user.id);
 
         if (result.success) {
           // Send completion event with summary

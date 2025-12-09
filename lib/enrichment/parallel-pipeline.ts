@@ -6,7 +6,7 @@
 
 import { getContact, updateContact } from '@/lib/database/contacts';
 import { searchLinkedInProfile, searchCompanyInfo, searchCompanyNews } from '@/lib/services/serper';
-import { generateContactSummary, generateReputationInsight } from '@/lib/services/openai';
+import { generateContactSummary, generateReputationInsight, UserPersonalization } from '@/lib/services/openai';
 import { detectServiceProvider } from '@/lib/services/serviceProviderDetection';
 import { researchCompanyWithPerplexity, PerplexityCompanyData } from '@/lib/services/perplexity';
 import { searchAllSocialProfiles, SocialMediaProfiles } from '@/lib/services/social-search';
@@ -42,6 +42,8 @@ export type ParallelEnrichmentResult = {
   // AI insights
   aiSummary: string | null;
   icebreakers: string[];
+  smsTemplates: { message: string }[];
+  emailTemplates: { subject: string; body: string }[];
   // Error tracking
   error: string | null;
 };
@@ -246,13 +248,38 @@ async function phase3_deep(
 }
 
 /**
+ * Fetch user personalization from profiles table
+ */
+async function fetchUserPersonalization(userId: string): Promise<UserPersonalization | undefined> {
+  try {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('nickname, occupation, about_me, company_name, industry, communication_tone')
+      .eq('id', userId)
+      .single();
+
+    if (data && (data.nickname || data.occupation || data.about_me)) {
+      return data as UserPersonalization;
+    }
+    return undefined;
+  } catch (error) {
+    console.error('Error fetching user personalization:', error);
+    return undefined;
+  }
+}
+
+/**
  * Main PRIORITIZED parallel enrichment pipeline
  * Total time: 10-18 seconds
  * User sees reviews/photos after 3-5 seconds (instant value!)
  */
 export async function enrichContactParallel(
   contactId: string,
-  onProgress?: EnrichmentProgressCallback
+  onProgress?: EnrichmentProgressCallback,
+  userId?: string
 ): Promise<ParallelEnrichmentResult> {
   try {
     // Get contact
@@ -263,6 +290,9 @@ export async function enrichContactParallel(
     }
 
     onProgress?.('start', 'Starting enrichment pipeline...');
+
+    // Fetch user personalization for AI message generation (non-blocking)
+    const personalizationPromise = userId ? fetchUserPersonalization(userId) : Promise.resolve(undefined);
 
     // Update status to processing
     await updateContact(contactId, {
@@ -314,8 +344,15 @@ export async function enrichContactParallel(
       });
     }
 
-    // Generate AI summary
-    onProgress?.('summary', 'Generating AI summary...');
+    // Generate AI summary with user personalization
+    onProgress?.('summary', 'Generating personalized AI summary...');
+
+    // Wait for personalization to be fetched
+    const userPersonalization = await personalizationPromise;
+    if (userPersonalization) {
+      onProgress?.('summary', `Writing messages as ${userPersonalization.nickname || 'you'}...`);
+    }
+
     const summaryResult = await generateContactSummary({
       firstName: contact.first_name,
       lastName: contact.last_name,
@@ -326,7 +363,7 @@ export async function enrichContactParallel(
         deepResult.perplexityData?.company_description || deepResult.companyInfo?.description,
       companyIndustry: deepResult.companyInfo?.industry,
       companyNews: deepResult.news,
-    });
+    }, userPersonalization);
 
     // Merge social media data (prefer Perplexity, fallback to Serper)
     const socialMedia = deepResult.perplexityData?.social_media || deepResult.socialProfiles;
@@ -386,6 +423,8 @@ export async function enrichContactParallel(
       // AI insights
       ai_summary: summaryResult.summary,
       icebreakers: summaryResult.icebreakers,
+      sms_templates: summaryResult.sms_templates || [],
+      email_templates: summaryResult.email_templates || [],
 
       // Status
       enrichment_status: 'completed',
@@ -445,6 +484,8 @@ export async function enrichContactParallel(
       // AI
       aiSummary: summaryResult.summary,
       icebreakers: summaryResult.icebreakers,
+      smsTemplates: summaryResult.sms_templates || [],
+      emailTemplates: summaryResult.email_templates || [],
       error: null,
     };
   } catch (error) {
@@ -482,6 +523,8 @@ export async function enrichContactParallel(
       socialProfiles: null,
       aiSummary: null,
       icebreakers: [],
+      smsTemplates: [],
+      emailTemplates: [],
       error: errorMessage,
     };
   }

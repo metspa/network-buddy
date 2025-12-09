@@ -1,6 +1,8 @@
 // API endpoints for contacts CRUD operations
 import { NextRequest, NextResponse } from 'next/server';
 import { getContacts, createContact } from '@/lib/database/contacts';
+import { createClient } from '@/lib/supabase/server';
+import { canUserEnrich } from '@/lib/services/usage-limiter';
 
 /**
  * GET /api/contacts
@@ -45,6 +47,28 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // CHECK LIMIT BEFORE CREATING CONTACT
+    const usageCheck = await canUserEnrich(user.id);
+
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'scan_limit_reached',
+          message: usageCheck.reason,
+          subscription: usageCheck.subscription,
+          credits: usageCheck.credits,
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -70,6 +94,22 @@ export async function POST(request: NextRequest) {
       notes: body.notes || undefined,
       tags: body.tags || undefined,
     });
+
+    // Increment scan count after successful contact creation
+    try {
+      const { error } = await supabase.rpc('increment_scan_count', {
+        p_user_id: user.id,
+      });
+
+      if (error) {
+        console.error('Failed to increment scan count:', error);
+      } else {
+        console.log('✅ Scan count incremented for user:', user.id);
+      }
+    } catch (scanError) {
+      console.error('Error incrementing scan count:', scanError);
+      // Don't fail the contact creation if scan tracking fails
+    }
 
     return NextResponse.json({ contact }, { status: 201 });
   } catch (error) {

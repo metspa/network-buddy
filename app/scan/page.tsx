@@ -7,10 +7,11 @@ import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ImagePreview from '@/components/camera/ImagePreview';
 import OCRResultEditor, { type OCRFields } from '@/components/ocr/OCRResultEditor';
+import EnrichmentProgress from '@/components/enrichment/EnrichmentProgress';
 
 type Step = 'capture' | 'preview' | 'processing' | 'edit' | 'enriching';
 
-type EnrichmentProgress = {
+type EnrichmentProgressItem = {
   step: string;
   message: string;
   data?: any;
@@ -68,13 +69,15 @@ export default function ScanPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Enrichment state
-  const [enrichmentProgress, setEnrichmentProgress] = useState<EnrichmentProgress[]>([]);
+  const [enrichmentProgress, setEnrichmentProgress] = useState<EnrichmentProgressItem[]>([]);
   const [gmbData, setGmbData] = useState<GMBData | null>(null);
   const [linkedInUrl, setLinkedInUrl] = useState<string | null>(null);
   const [enrichmentPhase, setEnrichmentPhase] = useState<string>('');
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
@@ -295,7 +298,15 @@ export default function ScanPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save contact');
+
+        // Handle scan limit reached
+        if (errorData.error === 'scan_limit_reached') {
+          setShowUpgradeModal(true);
+          setIsSaving(false);
+          return;
+        }
+
+        throw new Error(errorData.message || errorData.error || 'Failed to save contact');
       }
 
       const { contact } = await response.json();
@@ -372,13 +383,13 @@ export default function ScanPage() {
           }
         };
 
-        eventSource.onerror = (error) => {
-          console.error('SSE connection error:', error);
+        eventSource.onerror = () => {
+          console.error('SSE connection closed or failed');
           eventSource.close();
 
-          // Redirect even if streaming fails
+          // Redirect even if streaming fails - contact is already saved
           if (!enrichmentComplete) {
-            setEnrichmentPhase('Processing in background...');
+            setEnrichmentPhase('Enrichment continuing in background...');
             setTimeout(() => {
               router.push(`/contacts/${contact.id}`);
             }, 1500);
@@ -510,7 +521,7 @@ export default function ScanPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleRetake}
-                className="flex-1 px-4 py-4 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors min-h-[48px] active:scale-95 touch-manipulation"
+                className="flex-1 px-4 py-4 border-2 border-gray-400 text-gray-200 bg-gray-700/50 rounded-lg font-semibold hover:bg-gray-600/50 hover:border-gray-300 transition-colors min-h-[48px] active:scale-95 touch-manipulation"
               >
                 Retake Photo
               </button>
@@ -848,145 +859,237 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Step 5: Enriching */}
+        {/* Step 5: Enriching - Full screen progress */}
         {step === 'enriching' && (
-          <div className="space-y-6">
-            {/* Progress Indicator */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <svg
-                  className="w-6 h-6 text-green-600 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">Contact saved successfully!</p>
-                  <p className="text-sm text-gray-600">{enrichmentPhase}</p>
-                </div>
-              </div>
+          <>
+            {/* Sticky Progress Bar at Top */}
+            <EnrichmentProgress
+              currentPhase={enrichmentPhase}
+              progress={enrichmentProgress}
+            />
 
-              {/* Progress Steps */}
-              <div className="space-y-2">
-                {enrichmentProgress.map((progress, index) => (
-                  <div key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{progress.message}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* GMB Reviews & Photos (PRIORITY - shown first!) */}
-            {gmbData && gmbData.rating > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            {/* Content area with padding for fixed header */}
+            <div className="pt-52 space-y-6">
+              {/* Success message */}
+              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-2xl border border-green-500/30 p-6 text-center">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {gmbData.rating.toFixed(1)} stars ({gmbData.reviewCount.toLocaleString()} reviews)
-                  </h3>
                 </div>
+                <h2 className="text-xl font-bold text-white mb-2">Contact Saved!</h2>
+                <p className="text-gray-400">Now gathering detailed information about this contact...</p>
+              </div>
 
-                {/* Reviews */}
-                {gmbData.reviews && gmbData.reviews.length > 0 && (
-                  <div className="space-y-4 mb-6">
-                    {gmbData.reviews.slice(0, 3).map((review, index) => (
-                      <div key={index} className="pb-4 border-b last:border-b-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-gray-900">{review.author}</span>
-                          <span className="text-yellow-500">
-                            {'⭐'.repeat(review.rating)}
-                          </span>
+              {/* Live Results Feed */}
+              <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  Live Results
+                </h3>
+
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {enrichmentProgress.length === 0 ? (
+                    <div className="flex items-center gap-3 text-gray-400">
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Connecting to data sources...</span>
+                    </div>
+                  ) : (
+                    enrichmentProgress.map((progress, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                          index === enrichmentProgress.length - 1
+                            ? 'bg-violet-500/10 border border-violet-500/30'
+                            : 'bg-gray-700/30'
+                        }`}
+                      >
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          index === enrichmentProgress.length - 1
+                            ? 'bg-violet-500/20 text-violet-400'
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {index === enrichmentProgress.length - 1 ? (
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-700 mb-2">{review.text}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span>{review.date}</span>
-                          {review.likes > 0 && (
-                            <span className="flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                              </svg>
-                              {review.likes}
-                            </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm ${
+                            index === enrichmentProgress.length - 1 ? 'text-white' : 'text-gray-300'
+                          }`}>
+                            {progress.message}
+                          </p>
+                          {progress.data && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {progress.data.rating && `⭐ ${progress.data.rating} stars`}
+                              {progress.data.reviewCount && ` • ${progress.data.reviewCount} reviews`}
+                              {progress.data.url && 'Profile found'}
+                            </p>
                           )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Photos */}
-                {gmbData.photos && gmbData.photos.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Business Photos</h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {gmbData.photos.slice(0, 6).map((photo, index) => (
-                        <div key={index} className="relative aspect-square">
-                          <img
-                            src={photo.thumbnail}
-                            alt={photo.title || 'Business photo'}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* LinkedIn Profile */}
-            {linkedInUrl && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">LinkedIn Profile Found</p>
-                    <a
-                      href={linkedInUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      View Profile →
-                    </a>
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Additional info message */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900">
-                <strong>Note:</strong> We're gathering comprehensive company data, social profiles, and news in the background. You'll see all details on the contact page.
-              </p>
+              {/* GMB Reviews Preview (if found) */}
+              {gmbData && gmbData.rating > 0 && (
+                <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
+                  <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-4 border-b border-gray-700">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold">Google Reviews Found!</h3>
+                        <p className="text-yellow-400 text-sm">
+                          {gmbData.rating.toFixed(1)} stars • {gmbData.reviewCount.toLocaleString()} reviews
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Photos preview */}
+                  {gmbData.photos && gmbData.photos.length > 0 && (
+                    <div className="p-4 border-b border-gray-700">
+                      <div className="grid grid-cols-4 gap-2">
+                        {gmbData.photos.slice(0, 4).map((photo, index) => (
+                          <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                            <img
+                              src={photo.thumbnail}
+                              alt={photo.title || 'Business photo'}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top review preview */}
+                  {gmbData.reviews && gmbData.reviews.length > 0 && (
+                    <div className="p-4">
+                      <div className="bg-gray-700/30 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-white text-sm font-medium">{gmbData.reviews[0].author}</span>
+                          <span className="text-yellow-400 text-sm">{'⭐'.repeat(gmbData.reviews[0].rating)}</span>
+                        </div>
+                        <p className="text-gray-300 text-sm line-clamp-2">{gmbData.reviews[0].text}</p>
+                      </div>
+                      {gmbData.reviews.length > 1 && (
+                        <p className="text-gray-500 text-xs mt-2 text-center">
+                          +{gmbData.reviews.length - 1} more reviews
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* LinkedIn Found */}
+              {linkedInUrl && (
+                <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-semibold">LinkedIn Profile Found</p>
+                      <a
+                        href={linkedInUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 text-sm hover:underline"
+                      >
+                        View Profile →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          </>
         )}
       </div>
+
+      {/* Upgrade Modal - Shown when scan limit reached */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">Scan Limit Reached</h2>
+              <p className="text-gray-400 text-sm">
+                You've used all your monthly scans. Upgrade to Pro for 50 scans/month, or purchase credits to continue.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  setUpgradeLoading(true);
+                  try {
+                    const response = await fetch('/api/stripe/create-checkout', {
+                      method: 'POST',
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                      window.location.href = data.url;
+                    } else {
+                      alert('Failed to start upgrade. Please try again.');
+                      setUpgradeLoading(false);
+                    }
+                  } catch (error) {
+                    console.error('Upgrade error:', error);
+                    alert('Failed to start upgrade. Please try again.');
+                    setUpgradeLoading(false);
+                  }
+                }}
+                disabled={upgradeLoading}
+                className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
+              >
+                {upgradeLoading ? 'Loading...' : 'Upgrade to Pro - $9.99/mo'}
+              </button>
+
+              <button
+                onClick={() => router.push('/settings')}
+                className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors"
+              >
+                Buy Credits
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  router.push('/contacts');
+                }}
+                className="w-full py-2 text-gray-400 hover:text-white text-sm transition-colors"
+              >
+                View Existing Contacts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
