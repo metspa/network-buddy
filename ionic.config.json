@@ -1,0 +1,7 @@
+{
+  "name": "Network Buddy",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
