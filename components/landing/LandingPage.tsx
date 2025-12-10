@@ -41,8 +41,8 @@ export default function LandingPage() {
           <Link href="/auth/login" className="px-3 sm:px-5 py-2 sm:py-3 rounded-lg text-sm sm:text-[0.95rem] font-semibold cursor-pointer transition-all border-none no-underline bg-transparent text-[#F3F3F2] border border-[#2A2A2A] hover:border-[#3A83FE]">
             Sign in
           </Link>
-          <Link href="/auth/login" className="px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-[0.95rem] font-semibold cursor-pointer transition-all border-none no-underline bg-[#3A83FE] text-white hover:bg-[#2563eb] hover:shadow-[0_0_20px_rgba(58,131,254,0.2)]">
-            Get started
+          <Link href="/auth/signup" className="px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-[0.95rem] font-semibold cursor-pointer transition-all border-none no-underline bg-[#3A83FE] text-white hover:bg-[#2563eb] hover:shadow-[0_0_20px_rgba(58,131,254,0.2)]">
+            Sign up free
           </Link>
         </div>
       </nav>
@@ -125,7 +125,7 @@ export default function LandingPage() {
               Scan a business card, instantly enrich with LinkedIn, company intel, and reviews—then save to your network and automate follow-ups.
             </p>
             <div className="flex gap-3 sm:gap-4 justify-center lg:justify-start items-center flex-wrap mb-4">
-              <Link href="/auth/login" className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-[1.05rem] font-semibold no-underline bg-gradient-to-r from-[#3A83FE] to-[#6366F1] text-white hover:shadow-[0_0_30px_rgba(58,131,254,0.4)] transition-all hover:scale-105">
+              <Link href="/auth/signup" className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-[1.05rem] font-semibold no-underline bg-gradient-to-r from-[#3A83FE] to-[#6366F1] text-white hover:shadow-[0_0_30px_rgba(58,131,254,0.4)] transition-all hover:scale-105">
                 Get started free
               </Link>
               <button className="bg-transparent text-[#F3F3F2] inline-flex items-center gap-2 px-4 py-3 border border-[#2A2A2A] rounded-xl cursor-pointer font-semibold hover:border-[#3A83FE] hover:text-[#3A83FE] transition-all">
@@ -913,7 +913,7 @@ export default function LandingPage() {
               </div>
 
               {/* CTA Button */}
-              <Link href="/auth/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(58,131,254,0.5)] hover:scale-105 transition-all">
+              <Link href="/auth/signup" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(58,131,254,0.5)] hover:scale-105 transition-all">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
