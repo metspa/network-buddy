@@ -17,15 +17,20 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="flex justify-between items-center px-4 sm:px-[5%] py-3 sm:py-4 border-b border-[#2A2A2A] sticky top-0 bg-[rgba(3,3,3,0.95)] backdrop-blur-[20px] z-[1000]">
         <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
-          <Image
-            src="/logo.png"
-            alt="Network Buddy"
-            width={200}
-            height={50}
-            className="h-10 sm:h-12 w-auto drop-shadow-[0_2px_8px_rgba(58,131,254,0.4)]"
-            priority
-            style={{ filter: 'brightness(1.1)' }}
-          />
+          <div className="relative h-12 sm:h-14 md:h-16">
+            <Image
+              src="/logo-v2.png"
+              alt="Network Buddy"
+              width={240}
+              height={70}
+              className="h-12 sm:h-14 md:h-16 w-auto drop-shadow-[0_2px_12px_rgba(58,131,254,0.5)]"
+              style={{
+                mixBlendMode: 'screen',
+                filter: 'contrast(1.1) brightness(1.1)'
+              }}
+              priority
+            />
+          </div>
         </Link>
         <ul className="hidden md:flex gap-8 list-none">
           <li><a href="#product" className="text-[#A1A09E] no-underline text-[0.95rem] hover:text-[#F3F3F2] transition-colors">Product</a></li>
@@ -83,6 +88,14 @@ export default function LandingPage() {
             0%, 100% { box-shadow: 0 0 20px rgba(58, 131, 254, 0.3); }
             50% { box-shadow: 0 0 40px rgba(58, 131, 254, 0.6); }
           }
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+          }
           .phone-mockup {
             animation: float 6s ease-in-out infinite;
           }
@@ -101,7 +114,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left side - Text content */}
-          <div className="text-center lg:text-left order-2 lg:order-1">
+          <div className="text-center lg:text-left order-1">
             <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold mb-4 sm:mb-6 leading-[1.1] tracking-[-0.03em]">
               Ditch business cards.<br />
               <span className="bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] bg-clip-text text-transparent">
@@ -131,7 +144,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right side - Animated Phone Mockup */}
-          <div className="relative order-1 lg:order-2 flex justify-center">
+          <div className="relative order-2 flex justify-center">
             {/* Background glow */}
             <div className="absolute inset-0 bg-gradient-to-r from-[#3A83FE]/20 to-[#8B5CF6]/20 blur-[100px] rounded-full" />
 
@@ -229,14 +242,30 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Bottom Scan Button */}
+                {/* Bottom Scan Button - HERO */}
                 <div className="absolute bottom-3 left-3 right-3">
-                  <div className="bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] rounded-xl py-3 flex items-center justify-center gap-2 shadow-lg">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-white font-semibold text-sm">Scan Card</span>
+                  <div className="relative overflow-hidden rounded-xl">
+                    {/* Animated gradient border */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3A83FE] via-[#EC4899] to-[#F59E0B] rounded-xl"
+                      style={{
+                        backgroundSize: '200% 100%',
+                        animation: 'gradient-shift 3s ease infinite',
+                      }}
+                    />
+                    {/* Inner button */}
+                    <div className="relative m-[2px] bg-gradient-to-r from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] rounded-[10px] py-3 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(58,131,254,0.5)]">
+                      {/* Shimmer effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" style={{ animation: 'shimmer 2s infinite' }} />
+                      <svg className="w-5 h-5 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-white font-bold text-sm drop-shadow-lg">Scan Card</span>
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -672,17 +701,74 @@ export default function LandingPage() {
 
           {/* Mobile Features - Below Screenshot */}
           <div className="lg:hidden grid grid-cols-2 gap-3 mt-8">
-            {[
-              { icon: '📸', title: 'Instant Scan' },
-              { icon: '🔗', title: 'Auto-Match' },
-              { icon: '⭐', title: 'Reviews' },
-              { icon: '✉️', title: 'Smart Drafts' }
-            ].map((feature, i) => (
-              <div key={i} className="bg-[#0D0D0D]/80 border border-[#2A2A2A] rounded-xl p-3 flex items-center gap-2">
-                <span className="text-lg">{feature.icon}</span>
-                <span className="text-xs font-semibold text-white">{feature.title}</span>
+            {/* SCAN - Hero Feature */}
+            <div className="col-span-2 relative rounded-xl p-4 flex items-center justify-center gap-3 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%)',
+              }}
+            >
+              {/* Animated gradient border */}
+              <div className="absolute inset-0 rounded-xl"
+                style={{
+                  background: 'linear-gradient(135deg, #3A83FE, #8B5CF6, #EC4899, #F59E0B, #3A83FE)',
+                  backgroundSize: '400% 400%',
+                  animation: 'gradient-shift 4s ease infinite',
+                  padding: '2px',
+                  zIndex: 0,
+                }}
+              />
+              <div className="absolute inset-[2px] rounded-[10px] bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#0F172A]" />
+
+              {/* Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#3A83FE]/20 via-[#8B5CF6]/20 to-[#EC4899]/20 rounded-xl" />
+
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] flex items-center justify-center shadow-lg shadow-[#3A83FE]/30">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-bold text-sm">Instant Scan</span>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3A83FE] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3A83FE]"></span>
+                    </span>
+                  </div>
+                  <span className="text-[#A1A09E] text-xs">Point, snap, done!</span>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Other features */}
+            <div className="bg-[#0D0D0D]/80 border border-[#0077B5]/30 rounded-xl p-3 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0077B5] to-[#00A0DC] flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </div>
+              <span className="text-xs font-semibold text-white">Auto-Match</span>
+            </div>
+
+            <div className="bg-[#0D0D0D]/80 border border-[#F59E0B]/30 rounded-xl p-3 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#FBBF24] flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </div>
+              <span className="text-xs font-semibold text-white">Reviews</span>
+            </div>
+
+            <div className="col-span-2 bg-[#0D0D0D]/80 border border-[#8B5CF6]/30 rounded-xl p-3 flex items-center justify-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3A83FE] to-[#8B5CF6] flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="text-xs font-semibold text-white">Smart Drafts</span>
+            </div>
           </div>
         </div>
       </section>
@@ -735,47 +821,109 @@ export default function LandingPage() {
 
         {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {/* Feature 1 - LinkedIn (Large) */}
-          <div className="bento-card md:col-span-2 lg:col-span-2 relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 overflow-hidden group">
+          {/* Feature 1 - LinkedIn */}
+          <div className="bento-card relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 overflow-hidden group">
             <div className="bento-glow absolute inset-0 bg-gradient-to-br from-[#0077B5]/10 to-transparent opacity-0 transition-opacity duration-500" />
-            <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-start">
-              <div className="flex-1">
-                <div className="bento-icon w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0077B5] to-[#00A0DC] flex items-center justify-center mb-4 shadow-lg shadow-[#0077B5]/20">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                  </svg>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">LinkedIn Enrichment</h3>
-                <p className="text-sm sm:text-base text-[#A1A09E] leading-relaxed">
-                  Automatic profile matching with role detection, seniority level, and career history. Know exactly who you're talking to.
-                </p>
+            <div className="relative z-10">
+              <div className="bento-icon w-12 h-12 rounded-xl bg-gradient-to-br from-[#0077B5] to-[#00A0DC] flex items-center justify-center mb-4 shadow-lg shadow-[#0077B5]/20">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
               </div>
-              {/* Visual Illustration */}
-              <div className="hidden sm:block relative w-[200px] lg:w-[280px] flex-shrink-0">
-                <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] p-4 transform group-hover:scale-105 transition-transform">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0077B5] to-[#00A0DC] flex items-center justify-center text-white font-bold text-sm">JD</div>
-                    <div>
-                      <p className="text-white text-sm font-semibold">John Davis</p>
-                      <p className="text-[#6B6B6B] text-xs">CEO • TechCorp</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-green-400">✓</span>
-                      <span className="text-[#A1A09E]">500+ connections</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-green-400">✓</span>
-                      <span className="text-[#A1A09E]">C-Level • 15+ years</span>
-                    </div>
-                  </div>
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">LinkedIn Enrichment</h3>
+              <p className="text-sm text-[#A1A09E] leading-relaxed mb-4">
+                Auto-match profiles with role detection and career history.
+              </p>
+              {/* Mini Profile */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0077B5] to-[#00A0DC] flex items-center justify-center text-white font-bold text-xs">JD</div>
+                <div>
+                  <p className="text-white text-xs font-semibold">John Davis</p>
+                  <p className="text-[#6B6B6B] text-[10px]">CEO • TechCorp</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Feature 2 - Reviews */}
+          {/* Feature 2 - SCAN (HERO - Center, Large) */}
+          <div className="bento-card md:col-span-2 lg:col-span-1 lg:row-span-2 relative rounded-2xl p-6 sm:p-8 overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%)',
+              border: '2px solid transparent',
+              backgroundClip: 'padding-box',
+            }}
+          >
+            {/* Animated gradient border */}
+            <div className="absolute inset-0 rounded-2xl -z-10"
+              style={{
+                background: 'linear-gradient(135deg, #3A83FE, #8B5CF6, #EC4899, #F59E0B, #3A83FE)',
+                backgroundSize: '400% 400%',
+                animation: 'gradient-shift 4s ease infinite',
+                padding: '2px',
+              }}
+            />
+            <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#0F172A]" />
+
+            {/* Glow effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#3A83FE]/20 via-[#8B5CF6]/10 to-[#EC4899]/20 opacity-60 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-[#3A83FE] blur-[80px] opacity-30 group-hover:opacity-50 transition-opacity" />
+
+            <div className="relative z-10 h-full flex flex-col items-center justify-center text-center">
+              {/* Animated Camera Icon */}
+              <div className="relative mb-6">
+                {/* Pulse rings */}
+                <div className="absolute inset-0 w-24 h-24 rounded-full border-2 border-[#3A83FE]/30 animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-2 w-20 h-20 rounded-full border-2 border-[#8B5CF6]/30 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+
+                <div className="bento-icon w-24 h-24 rounded-2xl bg-gradient-to-br from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] flex items-center justify-center shadow-2xl shadow-[#3A83FE]/40 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-[#3A83FE]/20 to-[#8B5CF6]/20 border border-[#3A83FE]/30 mb-4">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3A83FE] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3A83FE]"></span>
+                </span>
+                <span className="text-[#3A83FE] text-xs font-semibold uppercase tracking-wider">Core Feature</span>
+              </div>
+
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-tight">
+                Instant Card Scan
+              </h3>
+              <p className="text-sm sm:text-base text-[#A1A09E] leading-relaxed max-w-[280px] mb-6">
+                Point your camera at any business card. AI extracts every detail in seconds.
+              </p>
+
+              {/* Animated Feature Pills */}
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                <span className="px-3 py-1.5 bg-[#3A83FE]/20 text-[#60A5FA] text-xs rounded-full font-medium border border-[#3A83FE]/30 group-hover:bg-[#3A83FE]/30 transition-colors">
+                  OCR Magic
+                </span>
+                <span className="px-3 py-1.5 bg-[#8B5CF6]/20 text-[#A78BFA] text-xs rounded-full font-medium border border-[#8B5CF6]/30 group-hover:bg-[#8B5CF6]/30 transition-colors">
+                  Auto-Extract
+                </span>
+                <span className="px-3 py-1.5 bg-[#EC4899]/20 text-[#F472B6] text-xs rounded-full font-medium border border-[#EC4899]/30 group-hover:bg-[#EC4899]/30 transition-colors">
+                  1-Tap Save
+                </span>
+              </div>
+
+              {/* CTA Button */}
+              <Link href="/auth/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(58,131,254,0.5)] hover:scale-105 transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Try Scanning Now
+              </Link>
+            </div>
+          </div>
+
+          {/* Feature 3 - Reviews */}
           <div className="bento-card relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 overflow-hidden group">
             <div className="bento-glow absolute inset-0 bg-gradient-to-br from-[#F59E0B]/10 to-transparent opacity-0 transition-opacity duration-500" />
             <div className="relative z-10">
@@ -798,7 +946,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Feature 3 - Company Intel */}
+          {/* Feature 4 - Company Intel */}
           <div className="bento-card relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 overflow-hidden group">
             <div className="bento-glow absolute inset-0 bg-gradient-to-br from-[#8B5CF6]/10 to-transparent opacity-0 transition-opacity duration-500" />
             <div className="relative z-10">
@@ -820,41 +968,29 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Feature 4 - Smart Drafts (Large) */}
-          <div className="bento-card md:col-span-2 lg:col-span-2 relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 overflow-hidden group">
+          {/* Feature 5 - Smart Drafts */}
+          <div className="bento-card relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 overflow-hidden group">
             <div className="bento-glow absolute inset-0 bg-gradient-to-br from-[#3A83FE]/10 to-[#8B5CF6]/10 opacity-0 transition-opacity duration-500" />
-            <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-start">
-              <div className="flex-1">
-                <div className="bento-icon w-14 h-14 rounded-2xl bg-gradient-to-br from-[#3A83FE] to-[#8B5CF6] flex items-center justify-center mb-4 shadow-lg shadow-[#3A83FE]/20">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">AI-Powered Outreach</h3>
-                <p className="text-sm sm:text-base text-[#A1A09E] leading-relaxed">
-                  Get personalized email, LinkedIn DM, and SMS templates drafted instantly. Never stare at a blank screen again.
-                </p>
+            <div className="relative z-10">
+              <div className="bento-icon w-12 h-12 rounded-xl bg-gradient-to-br from-[#3A83FE] to-[#8B5CF6] flex items-center justify-center mb-4 shadow-lg shadow-[#3A83FE]/20">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
               </div>
-              {/* Visual - Email Preview */}
-              <div className="hidden sm:block relative w-[220px] lg:w-[300px] flex-shrink-0">
-                <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] p-4 transform group-hover:scale-105 transition-transform">
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[#2A2A2A]">
-                    <div className="w-2 h-2 rounded-full bg-[#3A83FE]" />
-                    <span className="text-[#6B6B6B] text-xs">Draft ready</span>
-                  </div>
-                  <p className="text-white text-xs leading-relaxed">
-                    Hi John, great meeting you at the conference! I'd love to explore how we could...
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <span className="px-2 py-1 bg-[#3A83FE]/20 text-[#3A83FE] text-[10px] rounded">Email</span>
-                    <span className="px-2 py-1 bg-[#0077B5]/20 text-[#0077B5] text-[10px] rounded">LinkedIn</span>
-                  </div>
-                </div>
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">AI-Powered Outreach</h3>
+              <p className="text-sm text-[#A1A09E] leading-relaxed mb-4">
+                Personalized email, LinkedIn DM, and SMS templates drafted instantly.
+              </p>
+              {/* Mini Draft Preview */}
+              <div className="flex gap-2">
+                <span className="px-2 py-1 bg-[#3A83FE]/20 text-[#3A83FE] text-[10px] rounded">Email</span>
+                <span className="px-2 py-1 bg-[#0077B5]/20 text-[#0077B5] text-[10px] rounded">LinkedIn</span>
+                <span className="px-2 py-1 bg-[#10B981]/20 text-[#10B981] text-[10px] rounded">SMS</span>
               </div>
             </div>
           </div>
 
-          {/* Feature 5 - Pipeline */}
+          {/* Feature 6 - Pipeline */}
           <div className="bento-card relative bg-gradient-to-br from-[#0D0D0D] to-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 overflow-hidden group">
             <div className="bento-glow absolute inset-0 bg-gradient-to-br from-[#10B981]/10 to-transparent opacity-0 transition-opacity duration-500" />
             <div className="relative z-10">

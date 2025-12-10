@@ -8,61 +8,6 @@ export default function BottomNav() {
 
   const navItems = [
     {
-      name: 'Scan',
-      href: '/scan',
-      gradient: 'from-violet-500 to-purple-600',
-      shadowColor: 'shadow-violet-500/50',
-      inactiveColor: 'text-violet-400',
-      inactiveBg: 'bg-violet-500/20',
-      icon: (active: boolean) => (
-        <svg
-          className="w-7 h-7"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Camera body */}
-          <rect
-            x="2"
-            y="6"
-            width="20"
-            height="14"
-            rx="3"
-            fill={active ? 'url(#scanGradient)' : 'currentColor'}
-            opacity={active ? 1 : 0.7}
-          />
-          {/* Camera lens */}
-          <circle
-            cx="12"
-            cy="13"
-            r="4"
-            fill={active ? '#1f2937' : '#374151'}
-            stroke={active ? 'white' : '#9CA3AF'}
-            strokeWidth="2"
-          />
-          {/* Camera flash */}
-          <circle
-            cx="17"
-            cy="9"
-            r="1.5"
-            fill={active ? '#fbbf24' : '#9CA3AF'}
-          />
-          {/* Camera top bump */}
-          <path
-            d="M8 6V5C8 4.44772 8.44772 4 9 4H15C15.5523 4 16 4.44772 16 5V6"
-            fill={active ? 'url(#scanGradient)' : 'currentColor'}
-            opacity={active ? 1 : 0.7}
-          />
-          <defs>
-            <linearGradient id="scanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#8B5CF6" />
-              <stop offset="100%" stopColor="#7C3AED" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-    },
-    {
       name: 'Contacts',
       href: '/contacts',
       gradient: 'from-blue-500 to-cyan-500',
@@ -111,6 +56,72 @@ export default function BottomNav() {
             <linearGradient id="contactsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#3B82F6" />
               <stop offset="100%" stopColor="#06B6D4" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+    },
+    {
+      name: 'Scan',
+      href: '/scan',
+      isHero: true, // Mark as hero/main feature
+      gradient: 'from-[#3A83FE] via-[#8B5CF6] to-[#EC4899]',
+      shadowColor: 'shadow-[#8B5CF6]/60',
+      inactiveColor: 'text-white',
+      inactiveBg: 'bg-gradient-to-r from-[#3A83FE] via-[#8B5CF6] to-[#EC4899]',
+      icon: (active: boolean) => (
+        <svg
+          className="w-8 h-8"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Camera body */}
+          <rect
+            x="2"
+            y="6"
+            width="20"
+            height="14"
+            rx="3"
+            fill="url(#scanHeroGradient)"
+          />
+          {/* Camera lens outer ring */}
+          <circle
+            cx="12"
+            cy="13"
+            r="5"
+            fill="#1f2937"
+            stroke="url(#scanLensGradient)"
+            strokeWidth="2"
+          />
+          {/* Camera lens inner */}
+          <circle
+            cx="12"
+            cy="13"
+            r="2.5"
+            fill="url(#scanLensGradient)"
+          />
+          {/* Camera flash */}
+          <circle
+            cx="17"
+            cy="9"
+            r="1.5"
+            fill="#FBBF24"
+          />
+          {/* Camera top bump */}
+          <path
+            d="M8 6V5C8 4.44772 8.44772 4 9 4H15C15.5523 4 16 4.44772 16 5V6"
+            fill="url(#scanHeroGradient)"
+          />
+          <defs>
+            <linearGradient id="scanHeroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3A83FE" />
+              <stop offset="50%" stopColor="#8B5CF6" />
+              <stop offset="100%" stopColor="#EC4899" />
+            </linearGradient>
+            <linearGradient id="scanLensGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60A5FA" />
+              <stop offset="100%" stopColor="#F472B6" />
             </linearGradient>
           </defs>
         </svg>
@@ -201,10 +212,72 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-lg border-t border-gray-700/50 safe-area-pb z-50">
+      {/* Animated gradient line at top */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] opacity-50" />
+
       <div className="flex justify-around items-center h-20 max-w-screen-lg mx-auto px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+          const isHero = (item as any).isHero;
 
+          if (isHero) {
+            // SCAN - Hero Button (always colorful, centered, larger)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all duration-200 group -mt-6"
+              >
+                {/* Outer glow ring */}
+                <div className="relative">
+                  {/* Animated pulsing glow */}
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] opacity-40 blur-lg animate-pulse" />
+
+                  {/* Button container */}
+                  <div
+                    className={`
+                      relative p-4 rounded-full transition-all duration-300
+                      bg-gradient-to-r ${item.gradient}
+                      shadow-xl ${item.shadowColor}
+                      ${isActive ? 'scale-110 shadow-2xl' : 'scale-100 group-hover:scale-105'}
+                    `}
+                    style={{
+                      boxShadow: '0 0 30px rgba(139, 92, 246, 0.5), 0 0 60px rgba(139, 92, 246, 0.3)',
+                    }}
+                  >
+                    {item.icon(true)}
+
+                    {/* Inner shine effect */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-white/10 to-white/30" />
+
+                    {/* Animated ring */}
+                    {isActive && (
+                      <div className="absolute -inset-1 rounded-full border-2 border-white/50 animate-ping" style={{ animationDuration: '2s' }} />
+                    )}
+                  </div>
+
+                  {/* Pulsing dot indicator */}
+                  <div className="absolute -top-1 -right-1">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EC4899] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-[#EC4899]"></span>
+                    </span>
+                  </div>
+                </div>
+
+                <span
+                  className={`
+                    text-xs font-bold tracking-wide transition-colors duration-200 mt-1
+                    bg-gradient-to-r from-[#3A83FE] via-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent
+                  `}
+                >
+                  {item.name}
+                </span>
+              </Link>
+            );
+          }
+
+          // Regular nav items (Contacts, Settings)
           return (
             <Link
               key={item.name}
