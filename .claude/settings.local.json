@@ -52,7 +52,13 @@
       "WebFetch(domain:marketplace.gohighlevel.com)",
       "Bash(python -c:*)",
       "Bash(vercel logs:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git restore:*)",
+      "WebFetch(domain:npm.despia.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:lovable.despia.com)",
+      "WebFetch(domain:docs.despia.com)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
