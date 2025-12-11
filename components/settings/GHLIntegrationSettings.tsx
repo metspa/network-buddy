@@ -255,14 +255,26 @@ export default function GHLIntegrationSettings({ initialIntegration }: Props) {
 
           {/* Auto-sync Toggle */}
           <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="auto-sync"
-              checked={autoSync}
-              onChange={(e) => setAutoSync(e.target.checked)}
-              className="w-4 h-4 bg-[#2c2f33] border border-[#202225] rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <label htmlFor="auto-sync" className="text-sm text-gray-200">
+            <button
+              type="button"
+              onClick={() => setAutoSync(!autoSync)}
+              className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${
+                autoSync
+                  ? 'bg-blue-600 border-blue-600'
+                  : 'bg-[#2c2f33] border-[#4a4d52] hover:border-blue-500'
+              }`}
+            >
+              {autoSync && (
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+            <label
+              htmlFor="auto-sync"
+              className="text-sm text-gray-200 cursor-pointer"
+              onClick={() => setAutoSync(!autoSync)}
+            >
               Automatically sync contacts after enrichment
             </label>
           </div>

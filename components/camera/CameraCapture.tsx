@@ -1,20 +1,29 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useGeolocation } from '@/lib/hooks/useGeolocation';
+import type { GeoLocation } from '@/lib/services/geolocation';
 
 type CameraCaptureProps = {
-  onCapture: (file: File) => void;
+  onCapture: (file: File, location: GeoLocation | null) => void;
   disabled?: boolean;
 };
 
 export default function CameraCapture({ onCapture, disabled }: CameraCaptureProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { getLocation, isAvailable, permissionStatus } = useGeolocation();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      onCapture(file);
+      // Capture location when photo is taken (don't block if unavailable)
+      let location: GeoLocation | null = null;
+      if (isAvailable && permissionStatus !== 'denied') {
+        const result = await getLocation(5000); // 5 second timeout
+        location = result.location;
+      }
+      onCapture(file, location);
     }
   };
 
@@ -30,7 +39,7 @@ export default function CameraCapture({ onCapture, disabled }: CameraCaptureProp
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
@@ -38,7 +47,13 @@ export default function CameraCapture({ onCapture, disabled }: CameraCaptureProp
 
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      onCapture(file);
+      // Capture location when image is dropped (don't block if unavailable)
+      let location: GeoLocation | null = null;
+      if (isAvailable && permissionStatus !== 'denied') {
+        const result = await getLocation(5000);
+        location = result.location;
+      }
+      onCapture(file, location);
     }
   };
 

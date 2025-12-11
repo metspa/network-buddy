@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 0
+    },
+    Geolocation: {
+      // Uses high accuracy GPS when available
     }
   }
 };

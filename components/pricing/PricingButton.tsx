@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 type PricingButtonProps = {
-  plan: 'free' | 'growth' | 'pro';
+  plan: 'free' | 'starter' | 'growth';
   cta: string;
   featured?: boolean;
 };
@@ -21,7 +21,7 @@ export default function PricingButton({ plan, cta, featured }: PricingButtonProp
       return;
     }
 
-    // For Growth/Pro plan, create Stripe checkout session
+    // For Starter/Growth plan, create Stripe checkout session
     setLoading(true);
 
     try {
@@ -117,7 +117,7 @@ export default function PricingButton({ plan, cta, featured }: PricingButtonProp
     );
   }
 
-  // Pro plan button - outlined with glow on hover
+  // Growth plan button - outlined with glow on hover
   return (
     <button
       onClick={handleClick}

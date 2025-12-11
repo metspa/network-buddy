@@ -1089,13 +1089,13 @@ export default function LandingPage() {
           {[
             {
               id: 'free' as const,
-              title: 'Starter',
+              title: 'Free',
               subtitle: 'Perfect for trying it out',
               price: '$0',
               period: 'forever free',
               highlight: null,
               features: [
-                { text: '5 contact enrichments/mo', bold: true },
+                { text: '5 contacts total (one-time)', bold: true },
                 { text: 'AI-powered card scanning', bold: false },
                 { text: 'LinkedIn profile matching', bold: false },
                 { text: 'Company intel & research', bold: false },
@@ -1107,15 +1107,15 @@ export default function LandingPage() {
               featured: false
             },
             {
-              id: 'growth' as const,
-              title: 'Growth',
-              subtitle: 'For serious networkers',
-              price: '$29',
+              id: 'starter' as const,
+              title: 'Starter',
+              subtitle: 'For active networkers',
+              price: '$9',
               period: '/month',
               highlight: 'MOST POPULAR',
               features: [
-                { text: '30 enrichments/month', bold: true },
-                { text: 'Everything in Starter, plus:', bold: false },
+                { text: '10 enrichments/month', bold: true },
+                { text: 'Everything in Free, plus:', bold: false },
                 { text: 'Apollo email & phone finder', bold: true },
                 { text: 'Decision maker identification', bold: false },
                 { text: 'GoHighLevel CRM sync', bold: false },
@@ -1127,23 +1127,21 @@ export default function LandingPage() {
               featured: true
             },
             {
-              id: 'pro' as const,
-              title: 'Pro',
-              subtitle: 'For teams & power users',
-              price: '$79',
+              id: 'growth' as const,
+              title: 'Growth',
+              subtitle: 'For serious networkers',
+              price: '$29',
               period: '/month',
               highlight: 'BEST VALUE',
               features: [
-                { text: '120 enrichments/month', bold: true },
-                { text: 'Everything in Growth, plus:', bold: false },
+                { text: '30 enrichments/month', bold: true },
+                { text: 'Everything in Starter, plus:', bold: false },
+                { text: '3x more enrichments', bold: true },
                 { text: 'Bulk card import', bold: false },
-                { text: 'API access (coming soon)', bold: false },
-                { text: 'White-label exports', bold: false },
-                { text: 'Credits at $1/each (50% off)', bold: true },
                 { text: 'Priority enrichment queue', bold: false },
-                { text: 'Dedicated success manager', bold: false }
+                { text: 'Credits at $1.50/each (25% off)', bold: true }
               ],
-              cta: 'Go Pro',
+              cta: 'Go Growth',
               featured: false
             }
           ].map((plan, i) => (

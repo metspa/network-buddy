@@ -53,10 +53,15 @@ export type EnrichmentProgressCallback = (phase: string, message: string, data?:
 /**
  * PHASE 1: GOOGLE MY BUSINESS (PRIORITY - 3-5 sec)
  * Get reviews, photos, reputation - show to user immediately
+ *
+ * @param company - Company name to search
+ * @param location - Optional location string (e.g., "New York, NY")
+ * @param coordinates - Optional GPS coordinates for precise location (chain stores)
  */
 async function phase1_gmb(
   company: string | null,
   location: string | null,
+  coordinates: { latitude: number; longitude: number } | null,
   onProgress?: EnrichmentProgressCallback
 ): Promise<SerpApiGMBResult | null> {
   if (!company) {
@@ -65,7 +70,11 @@ async function phase1_gmb(
 
   onProgress?.('gmb', `Getting ${company}'s Google reviews and photos...`);
 
-  const cacheKey = `gmb:${company}`.toLowerCase().replace(/\s+/g, '_');
+  // Include coordinates in cache key for chain stores (different locations = different cache)
+  const coordSuffix = coordinates
+    ? `:${coordinates.latitude.toFixed(4)},${coordinates.longitude.toFixed(4)}`
+    : '';
+  const cacheKey = `gmb:${company}${coordSuffix}`.toLowerCase().replace(/\s+/g, '_');
   const cached = await getCachedData(cacheKey, 'gmb');
 
   if (cached) {
@@ -76,7 +85,7 @@ async function phase1_gmb(
     return cached;
   }
 
-  const result = await searchGoogleMapsBusiness(company, location || undefined);
+  const result = await searchGoogleMapsBusiness(company, location || undefined, coordinates || undefined);
 
   if (result.success) {
     // Cache for 14 days (GMB data changes, but not too frequently)
@@ -308,9 +317,15 @@ export async function enrichContactParallel(
 
     // PHASE 1: GOOGLE MY BUSINESS (PRIORITY - 3-5 sec)
     // Get this FIRST so user sees reviews/photos immediately
+    // Use GPS coordinates if available (for chain stores like Shake Shack)
+    const coordinates = contact.scan_latitude && contact.scan_longitude
+      ? { latitude: contact.scan_latitude, longitude: contact.scan_longitude }
+      : null;
+
     const gmbData = await phase1_gmb(
       contact.company,
       contact.met_at, // Use "met at" as location hint
+      coordinates, // GPS coordinates for precise location
       onProgress
     );
 

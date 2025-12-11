@@ -125,7 +125,8 @@ export async function decryptApiKey(encrypted: string): Promise<string> {
 // GHL API CLIENT
 // ============================================================================
 
-const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+// V1 API base URL - used for Business Profile API keys (JWT tokens)
+const GHL_API_V1 = 'https://rest.gohighlevel.com/v1';
 
 /**
  * Search for contact in GHL by email
@@ -136,12 +137,11 @@ async function searchGHLContact(
 ): Promise<{ exists: boolean; contactId?: string }> {
   try {
     const response = await fetch(
-      `${GHL_API_BASE}/contacts/?locationId=${credentials.locationId}&email=${encodeURIComponent(email)}`,
+      `${GHL_API_V1}/contacts/?locationId=${credentials.locationId}&email=${encodeURIComponent(email)}`,
       {
         headers: {
           Authorization: `Bearer ${credentials.apiKey}`,
           'Content-Type': 'application/json',
-          Version: '2021-07-28',
         },
       }
     );
@@ -173,12 +173,11 @@ async function createGHLContact(
   contact: GHLContact
 ): Promise<GHLSyncResult> {
   try {
-    const response = await fetch(`${GHL_API_BASE}/contacts/`, {
+    const response = await fetch(`${GHL_API_V1}/contacts/`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${credentials.apiKey}`,
         'Content-Type': 'application/json',
-        Version: '2021-07-28',
       },
       body: JSON.stringify({
         ...contact,
@@ -219,12 +218,11 @@ async function updateGHLContact(
   contact: GHLContact
 ): Promise<GHLSyncResult> {
   try {
-    const response = await fetch(`${GHL_API_BASE}/contacts/${ghlContactId}`, {
+    const response = await fetch(`${GHL_API_V1}/contacts/${ghlContactId}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${credentials.apiKey}`,
         'Content-Type': 'application/json',
-        Version: '2021-07-28',
       },
       body: JSON.stringify(contact),
     });
@@ -412,24 +410,36 @@ export async function syncContactToGHL(contactId: string): Promise<GHLSyncResult
 /**
  * Test GHL connection with given credentials
  * Used when user connects their GHL account
+ *
+ * Uses V1 API which works with Business Profile API keys (JWT tokens)
  */
 export async function testGHLConnection(
   apiKey: string,
   locationId: string
 ): Promise<boolean> {
   try {
+    // Use V1 contacts endpoint - works with Business Profile API keys
     const response = await fetch(
-      `${GHL_API_BASE}/locations/${locationId}`,
+      `${GHL_API_V1}/contacts/?locationId=${locationId}&limit=1`,
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          Version: '2021-07-28',
         },
       }
     );
 
-    return response.ok;
+    // 200 = success (even with 0 results)
+    // 401 = invalid API key
+    // 400 = invalid location ID
+    if (response.ok) {
+      return true;
+    }
+
+    // Log the error for debugging
+    const errorText = await response.text();
+    console.error('GHL connection test failed:', response.status, errorText);
+    return false;
   } catch (error) {
     console.error('GHL connection test error:', error);
     return false;

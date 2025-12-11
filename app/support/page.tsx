@@ -61,7 +61,7 @@ export default function SupportPage() {
               <div className="bg-[#2c2f33] p-4 rounded-lg border border-[#202225]">
                 <h3 className="text-lg font-medium text-white mb-2">How many scans do I get for free?</h3>
                 <p className="text-gray-300">
-                  Free accounts include 5 business card scans per month. Upgrade to Growth (25 scans/month) or Pro (unlimited scans)
+                  Free accounts include 5 business card scans total (one-time, does not reset monthly). Upgrade to Starter ($9/mo for 10 enrichments) or Growth ($29/mo for 30 enrichments)
                   for more capacity.
                 </p>
               </div>

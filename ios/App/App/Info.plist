@@ -51,5 +51,7 @@
 	<string>Network Buddy needs photo library access to select business card images</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Network Buddy needs permission to save images to your photo library</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Network Buddy uses your location to identify the specific business location when scanning a card at chain stores like Shake Shack</string>
 </dict>
 </plist>

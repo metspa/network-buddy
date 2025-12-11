@@ -41,17 +41,17 @@ export function getStripePublishableKey() {
 }
 
 /**
- * Get Stripe Price ID for Pro Plan
+ * Get Stripe Price ID for Starter Plan ($9/month)
  */
-export function getProPlanPriceId() {
-  if (!process.env.STRIPE_PRO_PRICE_ID) {
-    throw new Error('STRIPE_PRO_PRICE_ID is not set');
+export function getStarterPlanPriceId() {
+  if (!process.env.STRIPE_STARTER_PRICE_ID) {
+    throw new Error('STRIPE_STARTER_PRICE_ID is not set');
   }
-  return process.env.STRIPE_PRO_PRICE_ID;
+  return process.env.STRIPE_STARTER_PRICE_ID;
 }
 
 /**
- * Get Stripe Price ID for Growth Plan
+ * Get Stripe Price ID for Growth Plan ($29/month)
  */
 export function getGrowthPlanPriceId() {
   if (!process.env.STRIPE_GROWTH_PRICE_ID) {

@@ -114,9 +114,12 @@ export async function canUserEnrich(userId: string): Promise<UsageCheckResult> {
   }
 
   // 5. No scans or credits remaining
+  const isFreeUser = subscription.plan_name === 'free';
   return {
     allowed: false,
-    reason: 'You have used all your monthly enrichments and have no credits remaining. Upgrade your plan or purchase credits to continue.',
+    reason: isFreeUser
+      ? 'You have used all 5 of your free contacts. Upgrade to Starter ($9/mo) for 10 enrichments/month or purchase credits to continue.'
+      : 'You have used all your monthly enrichments and have no credits remaining. Upgrade your plan or purchase credits to continue.',
     subscription: {
       plan: subscription.plan_name,
       scansRemaining: 0,

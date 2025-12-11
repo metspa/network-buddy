@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { stripe, getProPlanPriceId, getGrowthPlanPriceId } from '@/lib/stripe/client';
+import { stripe, getStarterPlanPriceId, getGrowthPlanPriceId } from '@/lib/stripe/client';
 
 /**
  * POST /api/stripe/create-checkout
- * Creates a Stripe Checkout session for Growth or Pro Plan subscription
+ * Creates a Stripe Checkout session for Starter or Growth Plan subscription
  */
 export async function POST(req: NextRequest) {
   try {
@@ -19,13 +19,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get plan from request body (defaults to 'pro' for backwards compatibility)
+    // Get plan from request body (defaults to 'starter')
     const body = await req.json().catch(() => ({}));
-    const plan = body.plan || 'pro';
+    const plan = body.plan || 'starter';
 
-    if (!['growth', 'pro'].includes(plan)) {
+    if (!['starter', 'growth'].includes(plan)) {
       return NextResponse.json(
-        { error: 'Invalid plan. Must be growth or pro' },
+        { error: 'Invalid plan. Must be starter or growth' },
         { status: 400 }
       );
     }
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get price ID based on plan
-    const priceId = plan === 'growth' ? getGrowthPlanPriceId() : getProPlanPriceId();
+    const priceId = plan === 'growth' ? getGrowthPlanPriceId() : getStarterPlanPriceId();
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({

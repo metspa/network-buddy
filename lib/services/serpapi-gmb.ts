@@ -46,10 +46,15 @@ export type SerpApiGMBResult = {
  *
  * Cost: ~$0.01 per lookup
  * Speed: 3-5 seconds
+ *
+ * @param businessName - The business name to search for
+ * @param location - Optional location string (e.g., "New York, NY")
+ * @param coordinates - Optional GPS coordinates for precise location matching (chain stores)
  */
 export async function searchGoogleMapsBusiness(
   businessName: string,
-  location?: string
+  location?: string,
+  coordinates?: { latitude: number; longitude: number }
 ): Promise<SerpApiGMBResult> {
   const apiKey = process.env.SERPAPI_API_KEY;
 
@@ -84,6 +89,14 @@ export async function searchGoogleMapsBusiness(
     searchUrl.searchParams.set('q', query);
     searchUrl.searchParams.set('type', 'search');
     searchUrl.searchParams.set('api_key', apiKey);
+
+    // Add GPS coordinates for precise location matching (e.g., which Shake Shack location)
+    if (coordinates) {
+      // Format: @latitude,longitude,zoom (zoom 15 = ~1km radius)
+      const ll = `@${coordinates.latitude},${coordinates.longitude},15z`;
+      searchUrl.searchParams.set('ll', ll);
+      console.log('📍 Using GPS coordinates for GMB search:', ll);
+    }
 
     const searchResponse = await fetch(searchUrl.toString());
 

@@ -108,19 +108,19 @@ export async function POST(req: NextRequest) {
         // Determine plan details based on price ID
         const priceId = subscription.items.data[0]?.price.id;
         const isGrowth = priceId === process.env.STRIPE_GROWTH_PRICE_ID;
-        const isPro = priceId === process.env.STRIPE_PRO_PRICE_ID;
+        const isStarter = priceId === process.env.STRIPE_STARTER_PRICE_ID;
 
         let planName = 'free';
         let scanLimit = 5;
         let includesApollo = false;
 
-        if (isPro) {
-          planName = 'pro';
-          scanLimit = 120;
-          includesApollo = true;
-        } else if (isGrowth) {
+        if (isGrowth) {
           planName = 'growth';
           scanLimit = 30;
+          includesApollo = true;
+        } else if (isStarter) {
+          planName = 'starter';
+          scanLimit = 10;
           includesApollo = true;
         }
 

@@ -96,6 +96,10 @@ export type Contact = {
   favorited: boolean;
   created_at: string;
   updated_at: string;
+  // Scan location fields (GPS captured when scanning)
+  scan_latitude: number | null;
+  scan_longitude: number | null;
+  scan_location_accuracy: number | null;
 };
 
 export type NewContact = {
@@ -112,6 +116,10 @@ export type NewContact = {
   met_at?: string;
   notes?: string;
   tags?: string[];
+  // Scan location (GPS captured when scanning)
+  scan_latitude?: number;
+  scan_longitude?: number;
+  scan_location_accuracy?: number;
 };
 
 export type ContactUpdate = Partial<Omit<Contact, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;

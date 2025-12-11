@@ -8,6 +8,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import ImagePreview from '@/components/camera/ImagePreview';
 import OCRResultEditor, { type OCRFields } from '@/components/ocr/OCRResultEditor';
 import EnrichmentProgress from '@/components/enrichment/EnrichmentProgress';
+import type { GeoLocation } from '@/lib/services/geolocation';
 
 type Step = 'capture' | 'preview' | 'processing' | 'edit' | 'enriching';
 
@@ -79,6 +80,9 @@ export default function ScanPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
 
+  // Location state (GPS captured when scanning)
+  const [capturedLocation, setCapturedLocation] = useState<GeoLocation | null>(null);
+
   // Check authentication on mount
   useEffect(() => {
     async function checkAuth() {
@@ -98,14 +102,16 @@ export default function ScanPage() {
     checkAuth();
   }, [router]);
 
-  const handleCapture = async (file: File) => {
+  const handleCapture = async (file: File, location: GeoLocation | null) => {
     setCapturedFile(file);
+    setCapturedLocation(location);
     setError(null);
     setStep('preview');
   };
 
   const handleRetake = () => {
     setCapturedFile(null);
+    setCapturedLocation(null);
     setUploadedImageUrl('');
     setUploadedImagePath('');
     setOcrResult(null);
@@ -158,7 +164,7 @@ export default function ScanPage() {
       // Step 3: Start preview enrichment with auto-fill
       // This will fetch GMB data AND auto-fill missing contact info
       setEnrichmentPhase('Looking up company information...');
-      startPreviewEnrichment(ocrData.fields, (filledFields) => {
+      startPreviewEnrichment(ocrData.fields, capturedLocation, (filledFields) => {
         // Update OCR result with auto-filled data
         setOcrResult((prev: any) => ({
           ...prev,
@@ -177,9 +183,13 @@ export default function ScanPage() {
   // Preview enrichment - fetch GMB data and auto-fill missing contact info
   const startPreviewEnrichment = async (
     fields: { firstName?: string; lastName?: string; company?: string; email?: string; phone?: string; jobTitle?: string },
+    location: GeoLocation | null,
     onAutoFill?: (filled: Record<string, string>) => void
   ) => {
     console.log('🔍 Starting preview enrichment with fields:', fields);
+    if (location) {
+      console.log('📍 Using GPS location:', location.latitude, location.longitude);
+    }
 
     // Check if we need auto-fill (missing name or contact info)
     const needsAutoFill = !fields.firstName || !fields.lastName || !fields.email || !fields.phone;
@@ -210,6 +220,9 @@ export default function ScanPage() {
           phone: fields.phone,
           jobTitle: fields.jobTitle,
           autoFill: needsAutoFill,
+          // Include GPS coordinates for precise location matching (e.g., chain stores)
+          latitude: location?.latitude,
+          longitude: location?.longitude,
         }),
       });
 
@@ -293,6 +306,10 @@ export default function ScanPage() {
           cardImagePath: uploadedImagePath,
           ocrConfidence: ocrResult?.confidence,
           ocrRawText: ocrResult?.rawText,
+          // Include GPS coordinates captured when scanning
+          scanLatitude: capturedLocation?.latitude,
+          scanLongitude: capturedLocation?.longitude,
+          scanLocationAccuracy: capturedLocation?.accuracy,
         }),
       });
 
@@ -1039,7 +1056,7 @@ export default function ScanPage() {
               </div>
               <h2 className="text-xl font-bold text-white mb-2">Scan Limit Reached</h2>
               <p className="text-gray-400 text-sm">
-                You've used all your monthly scans. Upgrade to Pro for 50 scans/month, or purchase credits to continue.
+                You've used all your free contacts. Upgrade to Starter for 10 enrichments/month, or purchase credits to continue.
               </p>
             </div>
 
@@ -1050,6 +1067,8 @@ export default function ScanPage() {
                   try {
                     const response = await fetch('/api/stripe/create-checkout', {
                       method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ plan: 'starter' }),
                     });
                     const data = await response.json();
                     if (data.url) {
@@ -1067,7 +1086,7 @@ export default function ScanPage() {
                 disabled={upgradeLoading}
                 className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
               >
-                {upgradeLoading ? 'Loading...' : 'Upgrade to Pro - $9.99/mo'}
+                {upgradeLoading ? 'Loading...' : 'Upgrade to Starter - $9/mo'}
               </button>
 
               <button

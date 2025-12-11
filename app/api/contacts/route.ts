@@ -93,6 +93,10 @@ export async function POST(request: NextRequest) {
       met_at: body.metAt || undefined,
       notes: body.notes || undefined,
       tags: body.tags || undefined,
+      // GPS location captured when scanning (for chain store identification)
+      scan_latitude: body.scanLatitude || undefined,
+      scan_longitude: body.scanLongitude || undefined,
+      scan_location_accuracy: body.scanLocationAccuracy || undefined,
     });
 
     // Increment scan count after successful contact creation

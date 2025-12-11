@@ -19,7 +19,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { company, firstName, lastName, email, phone, jobTitle, website, autoFill = false } = body;
+    const { company, firstName, lastName, email, phone, jobTitle, website, autoFill = false, latitude, longitude } = body;
+
+    // Build coordinates object if GPS data is provided
+    const coordinates = latitude && longitude
+      ? { latitude: Number(latitude), longitude: Number(longitude) }
+      : null;
 
     // Auto-fill missing contact data if requested
     let autoFillResult = null;
@@ -64,7 +69,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check cache first (14-day TTL)
-    const cacheKey = `gmb:${effectiveCompany}`.toLowerCase().replace(/\s+/g, '_');
+    // Include coordinates in cache key for chain stores (different locations = different cache)
+    const coordSuffix = coordinates
+      ? `:${coordinates.latitude.toFixed(4)},${coordinates.longitude.toFixed(4)}`
+      : '';
+    const cacheKey = `gmb:${effectiveCompany}${coordSuffix}`.toLowerCase().replace(/\s+/g, '_');
     const cached = await getCachedData(cacheKey, 'gmb');
 
     if (cached) {
@@ -97,9 +106,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch fresh GMB data
+    // Fetch fresh GMB data (with GPS coordinates for precise location)
     console.log('🔍 Fetching fresh GMB data for:', effectiveCompany);
-    const gmbResult = await searchGoogleMapsBusiness(effectiveCompany);
+    if (coordinates) {
+      console.log('📍 Using GPS coordinates:', coordinates.latitude, coordinates.longitude);
+    }
+    const gmbResult = await searchGoogleMapsBusiness(effectiveCompany, undefined, coordinates || undefined);
 
     console.log('📊 GMB Result:', {
       success: gmbResult.success,

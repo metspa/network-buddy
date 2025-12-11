@@ -83,7 +83,7 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
   // Auto-start checkout if redirected from pricing page
   useEffect(() => {
     const startCheckout = searchParams.get('startCheckout');
-    if (startCheckout && (startCheckout === 'growth' || startCheckout === 'pro')) {
+    if (startCheckout && (startCheckout === 'starter' || startCheckout === 'growth')) {
       // Clear the URL parameter
       router.replace('/dashboard', { scroll: false });
 
