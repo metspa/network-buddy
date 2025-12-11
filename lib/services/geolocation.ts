@@ -1,10 +1,6 @@
 /**
- * Cross-platform geolocation service
- * Uses Capacitor Geolocation on native, falls back to browser API on web
+ * Geolocation service using browser's native Geolocation API
  */
-
-import { Capacitor } from '@capacitor/core';
-import { Geolocation, type Position } from '@capacitor/geolocation';
 
 export type GeoLocation = {
   latitude: number;
@@ -26,26 +22,14 @@ export type PermissionStatus = 'granted' | 'denied' | 'prompt' | 'unknown';
  * Check if geolocation is available on this platform
  */
 export function isGeolocationAvailable(): boolean {
-  if (Capacitor.isNativePlatform()) {
-    return true;
-  }
-  return 'geolocation' in navigator;
+  return typeof window !== 'undefined' && 'geolocation' in navigator;
 }
 
 /**
  * Request geolocation permission
+ * On web, permission is requested when getCurrentPosition is called
  */
 export async function requestLocationPermission(): Promise<PermissionStatus> {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const result = await Geolocation.requestPermissions();
-      return result.location as PermissionStatus;
-    } catch {
-      return 'denied';
-    }
-  }
-
-  // Web: Permission is requested when getCurrentPosition is called
   return 'prompt';
 }
 
@@ -53,13 +37,8 @@ export async function requestLocationPermission(): Promise<PermissionStatus> {
  * Check current permission status without prompting
  */
 export async function checkLocationPermission(): Promise<PermissionStatus> {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const result = await Geolocation.checkPermissions();
-      return result.location as PermissionStatus;
-    } catch {
-      return 'unknown';
-    }
+  if (typeof window === 'undefined') {
+    return 'unknown';
   }
 
   // Web: Check via Permissions API if available
@@ -77,7 +56,7 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
 
 /**
  * Get current location with timeout
- * Uses Capacitor on native, navigator.geolocation on web
+ * Uses browser's native geolocation API
  */
 export async function getCurrentLocation(
   timeoutMs: number = 10000
@@ -92,44 +71,17 @@ export async function getCurrentLocation(
   }
 
   try {
-    let position: Position;
-
-    if (Capacitor.isNativePlatform()) {
-      // Native: Use Capacitor Geolocation plugin
-      position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: timeoutMs,
-        maximumAge: 30000, // Accept cached position up to 30 seconds old
-      });
-    } else {
-      // Web: Use browser geolocation API
-      position = await new Promise<Position>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            resolve({
-              coords: {
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                accuracy: pos.coords.accuracy,
-                altitude: pos.coords.altitude,
-                altitudeAccuracy: pos.coords.altitudeAccuracy,
-                heading: pos.coords.heading,
-                speed: pos.coords.speed,
-              },
-              timestamp: pos.timestamp,
-            });
-          },
-          (error) => {
-            reject(error);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: timeoutMs,
-            maximumAge: 30000,
-          }
-        );
-      });
-    }
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (error) => reject(error),
+        {
+          enableHighAccuracy: true,
+          timeout: timeoutMs,
+          maximumAge: 30000,
+        }
+      );
+    });
 
     return {
       success: true,
@@ -144,12 +96,8 @@ export async function getCurrentLocation(
     };
   } catch (error: unknown) {
     // Handle permission denied
-    const err = error as { code?: number; message?: string };
-    const isPermissionDenied = Boolean(
-      err.code === 1 || // Web GeolocationPositionError.PERMISSION_DENIED
-      err.message?.toLowerCase().includes('permission') ||
-      err.message?.toLowerCase().includes('denied')
-    );
+    const err = error as GeolocationPositionError;
+    const isPermissionDenied = err.code === 1; // PERMISSION_DENIED
 
     return {
       success: false,
