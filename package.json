@@ -15,7 +15,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.86.0",
     "despia-native": "^1.0.14",
-    "next": "^16.0.7",
+    "next": "^16.0.10",
     "openai": "^6.9.1",
     "react": "^18",
     "react-dom": "^18",
