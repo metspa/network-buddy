@@ -41,8 +41,9 @@ export async function getCurrentUser() {
 export async function resetPassword(email: string) {
   const supabase = createClient()
 
+  // Redirect through callback first, then to reset-password page
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
+    redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
   })
 
   return { data, error }
