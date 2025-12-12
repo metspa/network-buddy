@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resetPassword } from '@/lib/supabase/auth'
@@ -13,10 +13,75 @@ function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
   const searchParams = useSearchParams()
 
-  // Check if we have a recovery token (user clicked email link)
-  const isRecoveryMode = searchParams.get('type') === 'recovery' || searchParams.get('code')
+  // Handle recovery tokens from URL hash or query params
+  useEffect(() => {
+    const handleRecovery = async () => {
+      const supabase = createClient()
+
+      // Check URL hash for tokens (Supabase sends tokens in hash)
+      if (typeof window !== 'undefined') {
+        const hash = window.location.hash
+        if (hash && hash.includes('access_token')) {
+          // Parse hash params
+          const hashParams = new URLSearchParams(hash.substring(1))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+          const type = hashParams.get('type')
+
+          if (type === 'recovery' && accessToken && refreshToken) {
+            // Set the session from the recovery tokens
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+
+            if (!error) {
+              setIsRecoveryMode(true)
+              setSessionReady(true)
+              // Clean up URL
+              window.history.replaceState(null, '', window.location.pathname)
+              return
+            } else {
+              setError('Recovery link has expired. Please request a new one.')
+            }
+          }
+        }
+
+        // Also check query params (alternative flow)
+        const code = searchParams.get('code')
+        const type = searchParams.get('type')
+
+        if (code && type === 'recovery') {
+          // Exchange code for session
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (!error) {
+            setIsRecoveryMode(true)
+            setSessionReady(true)
+            return
+          } else {
+            setError('Recovery link has expired. Please request a new one.')
+          }
+        }
+
+        // Check if there's already an active session (user might have refreshed)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          setIsRecoveryMode(true)
+          setSessionReady(true)
+          return
+        }
+      }
+
+      // No recovery mode - show email input form
+      setSessionReady(true)
+    }
+
+    handleRecovery()
+  }, [searchParams])
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,6 +128,20 @@ function ResetPasswordForm() {
       }, 2000)
     }
     setLoading(false)
+  }
+
+  // Show loading while processing recovery tokens
+  if (!sessionReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#2c2f33] p-4">
+        <div className="max-w-md w-full space-y-8 p-8 bg-[#36393f] rounded-lg shadow-xl border border-[#202225]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Processing recovery link...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -58,7 +58,11 @@
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:lovable.despia.com)",
       "WebFetch(domain:docs.despia.com)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(git rm:*)",
+      "WebFetch(domain:networkbuddy.io)",
+      "Bash(npm ls:*)",
+      "Bash(vercel ls:*)"
     ],
     "deny": [],
     "ask": []
