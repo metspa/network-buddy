@@ -34,10 +34,10 @@ export default function AuthCodeErrorPage() {
           </ul>
           <div className="space-y-3">
             <Link
-              href="/auth/reset-password"
+              href="/auth/signup"
               className="block w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
             >
-              Request New Reset Link
+              Sign Up Again
             </Link>
             <Link
               href="/auth/login"
@@ -46,6 +46,9 @@ export default function AuthCodeErrorPage() {
               Back to Login
             </Link>
           </div>
+          <p className="text-gray-500 text-xs mt-4">
+            Trying to reset your password? <Link href="/auth/reset-password" className="text-blue-400 hover:text-blue-300">Request a new reset link</Link>
+          </p>
         </div>
       </div>
     </div>

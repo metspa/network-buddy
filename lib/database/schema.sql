@@ -439,9 +439,9 @@ CREATE OR REPLACE FUNCTION create_default_subscription()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Note: Stripe customer will be created on-demand when user first interacts with billing
-  -- This just sets up the default free tier tracking
+  -- This just sets up the default free tier tracking with a unique placeholder ID
   INSERT INTO public.subscriptions (user_id, stripe_customer_id, plan_name, status, monthly_scan_limit)
-  VALUES (NEW.id, '', 'free', 'active', 5)
+  VALUES (NEW.id, 'pending_' || NEW.id::text, 'free', 'active', 5)
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;

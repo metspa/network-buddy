@@ -21,13 +21,13 @@ function SignUpForm() {
     setMessage(null)
     setLoading(true)
 
-    const { data, error } = await signUp(email, password)
+    const { data, error } = await signUp(email, password, returnUrl || undefined)
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
-      setMessage('Check your email for the confirmation link!')
+      setMessage('Check your email for the confirmation link! If you don\'t see it, check your spam folder.')
       setLoading(false)
       // Redirect to login with returnUrl preserved
       setTimeout(() => {

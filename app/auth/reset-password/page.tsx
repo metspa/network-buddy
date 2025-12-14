@@ -94,7 +94,7 @@ function ResetPasswordForm() {
     if (error) {
       setError(error.message)
     } else {
-      setMessage('Check your email for the password reset link!')
+      setMessage('Check your email for the password reset link! If you don\'t see it, check your spam folder.')
     }
     setLoading(false)
   }

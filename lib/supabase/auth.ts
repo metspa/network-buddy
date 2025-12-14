@@ -1,11 +1,16 @@
 import { createClient } from './client'
 
-export async function signUp(email: string, password: string) {
+export async function signUp(email: string, password: string, returnUrl?: string) {
   const supabase = createClient()
+
+  const redirectTo = `${window.location.origin}/auth/callback${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: redirectTo,
+    },
   })
 
   return { data, error }
