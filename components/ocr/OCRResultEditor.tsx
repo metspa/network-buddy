@@ -57,10 +57,14 @@ export default function OCRResultEditor({
       newErrors.email = 'Invalid email format';
     }
 
-    // At least first name or last name required
-    if (!fields.firstName && !fields.lastName) {
-      newErrors.firstName = 'First or last name required';
-      newErrors.lastName = 'First or last name required';
+    // At least one identifier required: name OR company OR email
+    // This allows saving company-only contacts - enrichment will find the CEO/decision maker
+    const hasName = fields.firstName || fields.lastName;
+    const hasCompany = fields.company && fields.company.trim().length > 0;
+    const hasEmail = fields.email && fields.email.trim().length > 0;
+
+    if (!hasName && !hasCompany && !hasEmail) {
+      newErrors.company = 'At least a name, company, or email is required';
     }
 
     setErrors(newErrors);
@@ -94,44 +98,54 @@ export default function OCRResultEditor({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Company field first - most important for enrichment */}
+        <div>
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+            Company <span className="text-gray-400 font-normal">(we'll find the decision maker)</span>
+          </label>
+          <input
+            type="text"
+            id="company"
+            value={fields.company}
+            onChange={(e) => handleChange('company', e.target.value)}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm ${
+              errors.company ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Acme Corporation"
+          />
+          {errors.company && (
+            <p className="text-xs text-red-600 mt-1">{errors.company}</p>
+          )}
+        </div>
+
         {/* Name fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-              First Name *
+              First Name
             </label>
             <input
               type="text"
               id="firstName"
               value={fields.firstName}
               onChange={(e) => handleChange('firstName', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm ${
-                errors.firstName ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="John"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
+              placeholder="Auto-filled if blank"
             />
-            {errors.firstName && (
-              <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>
-            )}
           </div>
 
           <div>
             <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-              Last Name *
+              Last Name
             </label>
             <input
               type="text"
               id="lastName"
               value={fields.lastName}
               onChange={(e) => handleChange('lastName', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm ${
-                errors.lastName ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Doe"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
+              placeholder="Auto-filled if blank"
             />
-            {errors.lastName && (
-              <p className="text-xs text-red-600 mt-1">{errors.lastName}</p>
-            )}
           </div>
         </div>
 
@@ -167,21 +181,6 @@ export default function OCRResultEditor({
             onChange={(e) => handleChange('phone', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
             placeholder="+1 (555) 123-4567"
-          />
-        </div>
-
-        {/* Company */}
-        <div>
-          <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-            Company
-          </label>
-          <input
-            type="text"
-            id="company"
-            value={fields.company}
-            onChange={(e) => handleChange('company', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
-            placeholder="Acme Corporation"
           />
         </div>
 
