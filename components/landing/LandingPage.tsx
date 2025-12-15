@@ -116,13 +116,13 @@ export default function LandingPage() {
           {/* Left side - Text content */}
           <div className="text-center lg:text-left order-1">
             <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold mb-4 sm:mb-6 leading-[1.1] tracking-[-0.03em]">
-              Ditch business cards.<br />
+              Snap a photo.<br />
               <span className="bg-gradient-to-r from-[#3A83FE] to-[#8B5CF6] bg-clip-text text-transparent">
-                Keep the relationship.
+                Get the full picture.
               </span>
             </h1>
             <p className="text-[clamp(1rem,2vw,1.2rem)] text-[#A1A09E] max-w-[550px] mx-auto lg:mx-0 mb-8 leading-[1.7]">
-              Scan a business card, instantly enrich with LinkedIn, company intel, and reviews—then save to your network and automate follow-ups.
+              Take a photo of any business card, logo, or storefront—our AI instantly recognizes it and enriches with emails, phone numbers, reviews, and company intel.
             </p>
             <div className="flex gap-3 sm:gap-4 justify-center lg:justify-start items-center flex-wrap mb-4">
               <Link href="/auth/signup" className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-[1.05rem] font-semibold no-underline bg-gradient-to-r from-[#3A83FE] to-[#6366F1] text-white hover:shadow-[0_0_30px_rgba(58,131,254,0.4)] transition-all hover:scale-105">
