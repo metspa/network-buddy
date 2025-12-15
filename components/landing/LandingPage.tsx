@@ -1098,6 +1098,7 @@ export default function LandingPage() {
                 { text: '5 contacts total (one-time)', bold: true },
                 { text: 'AI-powered card scanning', bold: false },
                 { text: 'LinkedIn profile matching', bold: false },
+                { text: 'Apollo email & phone finder', bold: true },
                 { text: 'Company intel & research', bold: false },
                 { text: 'Google reviews & photos', bold: false },
                 { text: 'AI conversation starters', bold: false },
@@ -1116,8 +1117,7 @@ export default function LandingPage() {
               features: [
                 { text: '10 enrichments/month', bold: true },
                 { text: 'Everything in Free, plus:', bold: false },
-                { text: 'Apollo email & phone finder', bold: true },
-                { text: 'Decision maker identification', bold: false },
+                { text: 'Decision maker identification', bold: true },
                 { text: 'GoHighLevel CRM sync', bold: false },
                 { text: 'SMS & email templates', bold: false },
                 { text: 'Buy extra credits anytime', bold: false },
