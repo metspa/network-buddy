@@ -1098,7 +1098,7 @@ export default function LandingPage() {
                 { text: '5 contacts total (one-time)', bold: true },
                 { text: 'AI-powered card scanning', bold: false },
                 { text: 'LinkedIn profile matching', bold: false },
-                { text: 'Apollo email & phone finder', bold: true },
+                { text: 'AI email & phone finder', bold: true },
                 { text: 'Company intel & research', bold: false },
                 { text: 'Google reviews & photos', bold: false },
                 { text: 'AI conversation starters', bold: false },
