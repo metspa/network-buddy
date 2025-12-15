@@ -62,7 +62,8 @@
       "Bash(git rm:*)",
       "WebFetch(domain:networkbuddy.io)",
       "Bash(npm ls:*)",
-      "Bash(vercel ls:*)"
+      "Bash(vercel ls:*)",
+      "Bash(npm update:*)"
     ],
     "deny": [],
     "ask": []
