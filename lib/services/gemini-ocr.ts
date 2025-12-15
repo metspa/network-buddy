@@ -22,6 +22,7 @@ export type GeminiOCRResult = {
 
 /**
  * Clean email by removing OCR artifacts like "Office.", "Email:", etc.
+ * Also validates that the email has proper format with characters before @
  */
 function cleanEmail(email: string | null): string | null {
   if (!email) return null;
@@ -43,8 +44,15 @@ function cleanEmail(email: string | null): string | null {
     .replace(/^Business:?\s*/i, '') // "Business:"
     .trim();
 
-  // Only return if it looks like a valid email
-  return cleaned.includes('@') && cleaned.includes('.') ? cleaned : null;
+  // Validate email format: must have characters before @, @ symbol, domain, and TLD
+  // This rejects incomplete emails like "@gmail.com" or "user@" or just "@"
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(cleaned)) {
+    console.warn('Invalid email format rejected:', cleaned);
+    return null;
+  }
+
+  return cleaned;
 }
 
 /**

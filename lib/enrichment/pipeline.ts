@@ -250,6 +250,9 @@ export async function enrichContact(contactId: string): Promise<EnrichmentResult
       website_status: reputationData?.website ? 'active' : reputationData?.success ? 'none' : null,
       reputation_checked_at: isServiceProvider ? new Date().toISOString() : null,
       reputation_error: reputationData?.error || null,
+      // GMB photos and reviews
+      gmb_photos: reputationData?.photos || null,
+      gmb_reviews: reputationData?.reviews || null,
       enrichment_status: 'completed',
       enrichment_error: null,
     });

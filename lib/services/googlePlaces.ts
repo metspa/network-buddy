@@ -1,5 +1,19 @@
 // Google Places API Integration - Search businesses and get reputation data
 
+export type GooglePlacesPhoto = {
+  url: string;
+  thumbnail: string;
+  title?: string;
+};
+
+export type GooglePlacesReview = {
+  author: string;
+  rating: number;
+  text: string;
+  date: string;
+  likes: number;
+};
+
 export type GooglePlacesResult = {
   success: boolean;
   placeId: string | null;
@@ -9,6 +23,8 @@ export type GooglePlacesResult = {
   phone: string | null;
   website: string | null;
   isActive: boolean;
+  photos: GooglePlacesPhoto[];
+  reviews: GooglePlacesReview[];
   error: string | null;
 };
 
@@ -35,6 +51,8 @@ export async function searchGooglePlaces(
       phone: null,
       website: null,
       isActive: false,
+      photos: [],
+      reviews: [],
       error: 'Google Places API not configured',
     };
   }
@@ -61,6 +79,8 @@ export async function searchGooglePlaces(
         phone: null,
         website: null,
         isActive: false,
+        photos: [],
+        reviews: [],
         error: 'API access denied. Check API key and billing.',
       };
     }
@@ -75,16 +95,18 @@ export async function searchGooglePlaces(
         phone: null,
         website: null,
         isActive: false,
+        photos: [],
+        reviews: [],
         error: 'Business not found on Google',
       };
     }
 
     const place = searchData.results[0];
 
-    // Step 2: Get Place Details for comprehensive information
+    // Step 2: Get Place Details for comprehensive information (including photos and reviews)
     const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${
       place.place_id
-    }&fields=name,rating,user_ratings_total,formatted_address,formatted_phone_number,website,business_status&key=${apiKey}`;
+    }&fields=name,rating,user_ratings_total,formatted_address,formatted_phone_number,website,business_status,photos,reviews&key=${apiKey}`;
 
     const detailsResponse = await fetch(detailsUrl);
     const detailsData = await detailsResponse.json();
@@ -100,11 +122,29 @@ export async function searchGooglePlaces(
         phone: null,
         website: null,
         isActive: true,
+        photos: [],
+        reviews: [],
         error: null,
       };
     }
 
     const details = detailsData.result;
+
+    // Process photos - convert photo_reference to actual URLs
+    const photos: GooglePlacesPhoto[] = (details.photos || []).slice(0, 6).map((photo: any) => ({
+      url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${apiKey}`,
+      thumbnail: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${photo.photo_reference}&key=${apiKey}`,
+      title: photo.html_attributions?.[0]?.replace(/<[^>]*>/g, '') || undefined,
+    }));
+
+    // Process reviews
+    const reviews: GooglePlacesReview[] = (details.reviews || []).slice(0, 5).map((review: any) => ({
+      author: review.author_name || 'Anonymous',
+      rating: review.rating || 0,
+      text: review.text || '',
+      date: review.relative_time_description || '',
+      likes: 0, // Google Places API doesn't provide this directly
+    }));
 
     return {
       success: true,
@@ -115,6 +155,8 @@ export async function searchGooglePlaces(
       phone: details.formatted_phone_number || null,
       website: details.website || null,
       isActive: details.business_status === 'OPERATIONAL',
+      photos,
+      reviews,
       error: null,
     };
   } catch (error) {
@@ -129,6 +171,8 @@ export async function searchGooglePlaces(
       phone: null,
       website: null,
       isActive: false,
+      photos: [],
+      reviews: [],
       error: error instanceof Error ? error.message : 'Failed to search Google Places',
     };
   }
