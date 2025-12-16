@@ -528,16 +528,20 @@ export async function enrichContactParallel(
 
     console.log('📊 Enrichment results:', {
       linkedIn: bestLinkedInUrl ? 'found' : 'not found',
+      linkedInUrl: bestLinkedInUrl,
       apolloEmail: apolloResult?.email ? 'found' : 'not found',
       apolloPhone: apolloResult?.phone ? 'found' : 'not found',
       socialMedia: socialMedia ? Object.keys(socialMedia).filter(k => (socialMedia as any)[k]).join(', ') : 'none',
+      socialMediaData: socialMedia,
       website: finalWebsite || 'not found',
       perplexityDescription: deepResult.perplexityData?.company_description ? 'found' : 'not found',
       executives: rankedExecutives?.length || 0,
+      aiSummary: summaryResult.summary ? 'generated' : 'not generated',
+      icebreakers: summaryResult.icebreakers?.length || 0,
     });
 
-    // Update contact with ALL data
-    await updateContact(contactId, {
+    // DEBUG: Log what we're about to save
+    const updateData = {
       // GMB data (PRIORITY)
       reputation_score: gmbData?.rating || null,
       review_count: gmbData?.review_count || null,
@@ -569,7 +573,7 @@ export async function enrichContactParallel(
       company_employees: deepResult.perplexityData?.company_employees,
       company_description: deepResult.perplexityData?.company_description,
       founders: deepResult.perplexityData?.founders,
-      executives: rankedExecutives, // Use ranked executives instead of raw
+      executives: rankedExecutives,
       competitors: deepResult.perplexityData?.competitors,
       social_media: socialMedia,
       technologies: deepResult.perplexityData?.technologies,
@@ -589,9 +593,27 @@ export async function enrichContactParallel(
       email_templates: summaryResult.email_templates || [],
 
       // Status
-      enrichment_status: 'completed',
+      enrichment_status: 'completed' as const,
       enrichment_error: null,
+    };
+
+    console.log('💾 SAVING TO DATABASE - Key fields:', {
+      linkedin_url: updateData.linkedin_url,
+      social_media: updateData.social_media,
+      company_website: updateData.company_website,
+      company_description: updateData.company_description?.slice(0, 50),
+      ai_summary: updateData.ai_summary?.slice(0, 50),
+      enrichment_status: updateData.enrichment_status,
     });
+
+    // Update contact with ALL data
+    try {
+      await updateContact(contactId, updateData);
+      console.log('✅ Database update successful');
+    } catch (dbError) {
+      console.error('❌ Database update FAILED:', dbError);
+      throw dbError;
+    }
 
     onProgress?.('complete', 'Enrichment complete!');
 
