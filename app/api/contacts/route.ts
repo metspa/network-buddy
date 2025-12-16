@@ -79,6 +79,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('📥 Contact API received:', {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phone: body.phone,
+      company: body.company,
+      jobTitle: body.jobTitle,
+      website: body.website,
+      address: body.address,
+    });
+
     const contact = await createContact({
       first_name: body.firstName || undefined,
       last_name: body.lastName || undefined,
@@ -86,6 +97,8 @@ export async function POST(request: NextRequest) {
       phone: body.phone || undefined,
       company: body.company || undefined,
       job_title: body.jobTitle || undefined,
+      company_website: body.website || undefined,
+      address: body.address || undefined,
       card_image_url: body.cardImageUrl,
       card_image_path: body.cardImagePath,
       ocr_confidence: body.ocrConfidence || undefined,

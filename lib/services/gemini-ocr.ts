@@ -169,6 +169,28 @@ CRITICAL RULES:
     confidence += Math.min(filledFields * 5, 30); // Other fields
     confidence = Math.min(confidence, 95);
 
+    // Log raw Gemini extraction before cleaning
+    console.log('🤖 Gemini raw extraction:', {
+      rawEmail: parsed.fields.email,
+      rawPhone: parsed.fields.phone,
+      rawWebsite: parsed.fields.website,
+      rawAddress: parsed.fields.address,
+      rawFirstName: parsed.fields.firstName,
+      rawLastName: parsed.fields.lastName,
+      rawCompany: parsed.fields.company,
+    });
+
+    const cleanedEmail = cleanEmail(parsed.fields.email);
+    const cleanedPhone = cleanPhone(parsed.fields.phone);
+
+    // Log cleaned values
+    console.log('🧹 After cleaning:', {
+      cleanedEmail,
+      cleanedPhone,
+      originalEmail: parsed.fields.email,
+      originalPhone: parsed.fields.phone,
+    });
+
     return {
       imageType,
       rawText: parsed.rawText || '',
@@ -176,8 +198,8 @@ CRITICAL RULES:
       fields: {
         firstName: parsed.fields.firstName || null,
         lastName: parsed.fields.lastName || null,
-        email: cleanEmail(parsed.fields.email),
-        phone: cleanPhone(parsed.fields.phone),
+        email: cleanedEmail,
+        phone: cleanedPhone,
         company: parsed.fields.company || null,
         jobTitle: parsed.fields.jobTitle || null,
         website: parsed.fields.website || null,

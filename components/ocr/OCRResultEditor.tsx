@@ -9,6 +9,8 @@ export type OCRFields = {
   phone: string;
   company: string;
   jobTitle: string;
+  website: string;
+  address: string;
 };
 
 type OCRResultEditorProps = {
@@ -33,6 +35,8 @@ export default function OCRResultEditor({
     phone: initialFields.phone || '',
     company: initialFields.company || '',
     jobTitle: initialFields.jobTitle || '',
+    website: initialFields.website || '',
+    address: initialFields.address || '',
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof OCRFields, string>>>({});
@@ -196,6 +200,36 @@ export default function OCRResultEditor({
             onChange={(e) => handleChange('jobTitle', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
             placeholder="CEO"
+          />
+        </div>
+
+        {/* Website */}
+        <div>
+          <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
+            Website
+          </label>
+          <input
+            type="url"
+            id="website"
+            value={fields.website}
+            onChange={(e) => handleChange('website', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
+            placeholder="https://example.com"
+          />
+        </div>
+
+        {/* Address */}
+        <div>
+          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+            Address
+          </label>
+          <input
+            type="text"
+            id="address"
+            value={fields.address}
+            onChange={(e) => handleChange('address', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation text-sm"
+            placeholder="123 Main St, City, State"
           />
         </div>
 

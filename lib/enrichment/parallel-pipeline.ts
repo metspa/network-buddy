@@ -11,6 +11,7 @@ import { detectServiceProvider } from '@/lib/services/serviceProviderDetection';
 import { researchCompanyWithPerplexity, PerplexityCompanyData } from '@/lib/services/perplexity';
 import { searchAllSocialProfiles, SocialMediaProfiles } from '@/lib/services/social-search';
 import { searchGoogleMapsBusiness, SerpApiGMBResult, GMBReview, GMBPhoto } from '@/lib/services/serpapi-gmb';
+import { enrichContactWithApollo, shouldUseApollo, type ApolloEnrichmentResult } from '@/lib/services/apollo';
 import {
   getCachedData,
   setCachedData,
@@ -35,6 +36,10 @@ export type ParallelEnrichmentResult = {
   recentNews: string[];
   perplexityData: PerplexityCompanyData | null;
   socialProfiles: SocialMediaProfiles | null;
+  // Apollo enrichment (email/phone)
+  apolloData: ApolloEnrichmentResult | null;
+  enrichedEmail: string | null;
+  enrichedPhone: string | null;
   // Service provider detection
   isServiceProvider: boolean;
   serviceCategory: string | null;
@@ -257,6 +262,66 @@ async function phase3_deep(
 }
 
 /**
+ * APOLLO ENRICHMENT: Get email/phone if missing (2-3 sec)
+ * Only called if contact is missing email OR phone
+ */
+async function enrichWithApollo(
+  firstName: string | null,
+  lastName: string | null,
+  company: string | null,
+  email: string | null,
+  phone: string | null,
+  onProgress?: EnrichmentProgressCallback
+): Promise<ApolloEnrichmentResult | null> {
+  // Only call Apollo if we have name + company and missing email/phone
+  if (!firstName || !lastName || !company) {
+    console.log('⏭️ Apollo: Skipping - missing name or company');
+    return null;
+  }
+
+  // Check if we need Apollo enrichment
+  if (!shouldUseApollo(email, phone)) {
+    console.log('✅ Apollo: Skipping - already have email and phone');
+    return null;
+  }
+
+  onProgress?.('apollo', `Looking up ${firstName} ${lastName} at ${company} via Apollo.io...`);
+
+  try {
+    const result = await enrichContactWithApollo({
+      firstName,
+      lastName,
+      company,
+    });
+
+    if (result) {
+      const foundItems = [];
+      if (result.email && !email) foundItems.push('email');
+      if (result.phone && !phone) foundItems.push('phone');
+      if (result.linkedin_url) foundItems.push('LinkedIn');
+
+      if (foundItems.length > 0) {
+        onProgress?.('apollo', `Apollo found: ${foundItems.join(', ')}!`, {
+          hasEmail: !!result.email,
+          hasPhone: !!result.phone,
+          hasLinkedIn: !!result.linkedin_url,
+        });
+      } else {
+        onProgress?.('apollo', 'Apollo search complete - no new data found');
+      }
+    } else {
+      onProgress?.('apollo', 'No Apollo results found');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Apollo enrichment error:', error);
+    onProgress?.('apollo', 'Apollo enrichment failed (continuing...)');
+    return null;
+  }
+}
+
+/**
  * Fetch user personalization from profiles table
  */
 async function fetchUserPersonalization(userId: string): Promise<UserPersonalization | undefined> {
@@ -329,20 +394,35 @@ export async function enrichContactParallel(
       onProgress
     );
 
-    // PHASE 2: LINKEDIN (2-3 sec)
-    const linkedInResult = await phase2_linkedin(
-      contact.first_name,
-      contact.last_name,
-      contact.company,
-      onProgress
-    );
+    // PHASE 2 & 3: Run LinkedIn, Apollo, and Deep Research in PARALLEL
+    onProgress?.('parallel', 'Starting parallel enrichment (LinkedIn, Apollo, Deep Research)...');
 
-    // PHASE 3: DEEP RESEARCH (5-10 sec, all parallel)
-    const deepResult = await phase3_deep(
-      contact.company,
-      gmbData?.website || null,
-      onProgress
-    );
+    const [linkedInResult, apolloResult, deepResult] = await Promise.all([
+      // LinkedIn search
+      phase2_linkedin(
+        contact.first_name,
+        contact.last_name,
+        contact.company,
+        onProgress
+      ),
+
+      // Apollo enrichment (get email/phone if missing)
+      enrichWithApollo(
+        contact.first_name,
+        contact.last_name,
+        contact.company,
+        contact.email,
+        contact.phone,
+        onProgress
+      ),
+
+      // Deep research (Perplexity, news, social, company info)
+      phase3_deep(
+        contact.company,
+        gmbData?.website || null,
+        onProgress
+      ),
+    ]);
 
     // Generate reputation insight if we have GMB data
     let reputationInsight: any = null;
@@ -393,6 +473,20 @@ export async function enrichContactParallel(
       onProgress?.('decision_makers', `Identified ${rankedExecutives.length} key decision makers`);
     }
 
+    // Determine best LinkedIn URL (prefer Serper, fallback to Apollo)
+    const bestLinkedInUrl = linkedInResult.url || apolloResult?.linkedin_url || null;
+
+    // Determine email/phone (Apollo fills in missing data)
+    const enrichedEmail = contact.email || apolloResult?.email || null;
+    const enrichedPhone = contact.phone || apolloResult?.phone || null;
+
+    console.log('📊 Enrichment results:', {
+      linkedIn: bestLinkedInUrl ? 'found' : 'not found',
+      apolloEmail: apolloResult?.email ? 'found' : 'not found',
+      apolloPhone: apolloResult?.phone ? 'found' : 'not found',
+      socialMedia: socialMedia ? Object.keys(socialMedia).filter(k => (socialMedia as any)[k]).join(', ') : 'none',
+    });
+
     // Update contact with ALL data
     await updateContact(contactId, {
       // GMB data (PRIORITY)
@@ -406,11 +500,15 @@ export async function enrichContactParallel(
       gmb_place_id: gmbData?.place_id || null,
       gmb_hours: gmbData?.hours || null,
 
-      // LinkedIn
-      linkedin_url: linkedInResult.url,
+      // LinkedIn (prefer Serper search, fallback to Apollo)
+      linkedin_url: bestLinkedInUrl,
+
+      // Apollo enrichment (fill in missing email/phone)
+      email: enrichedEmail,
+      phone: enrichedPhone,
 
       // Deep research
-      company_website: gmbData?.website || deepResult.companyInfo?.website,
+      company_website: gmbData?.website || apolloResult?.organization?.website || deepResult.companyInfo?.website,
       company_industry: deepResult.companyInfo?.industry,
       recent_news: deepResult.news,
 
@@ -485,13 +583,17 @@ export async function enrichContactParallel(
       reputationScore: gmbData?.rating || null,
       reviewCount: gmbData?.review_count || null,
       // LinkedIn
-      linkedInUrl: linkedInResult.url,
+      linkedInUrl: bestLinkedInUrl,
       // Deep research
-      companyWebsite: gmbData?.website || deepResult.companyInfo?.website,
+      companyWebsite: gmbData?.website || apolloResult?.organization?.website || deepResult.companyInfo?.website,
       companyIndustry: deepResult.companyInfo?.industry,
       recentNews: deepResult.news,
       perplexityData: deepResult.perplexityData,
       socialProfiles: deepResult.socialProfiles,
+      // Apollo enrichment
+      apolloData: apolloResult,
+      enrichedEmail,
+      enrichedPhone,
       // Service provider
       isServiceProvider,
       serviceCategory: category,
@@ -536,6 +638,9 @@ export async function enrichContactParallel(
       reputationSummary: null,
       perplexityData: null,
       socialProfiles: null,
+      apolloData: null,
+      enrichedEmail: null,
+      enrichedPhone: null,
       aiSummary: null,
       icebreakers: [],
       smsTemplates: [],

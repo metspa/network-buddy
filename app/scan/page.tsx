@@ -159,6 +159,11 @@ export default function ScanPage() {
       }
 
       const ocrData = await ocrResponse.json();
+      console.log('🔍 OCR Result received:', JSON.stringify(ocrData, null, 2));
+      console.log('📧 Email from OCR:', ocrData.fields?.email);
+      console.log('📱 Phone from OCR:', ocrData.fields?.phone);
+      console.log('🌐 Website from OCR:', ocrData.fields?.website);
+      console.log('📍 Address from OCR:', ocrData.fields?.address);
       setOcrResult(ocrData);
 
       // Step 3: Start preview enrichment with auto-fill
@@ -238,15 +243,17 @@ export default function ScanPage() {
           setAutoFillData(data.autoFill);
           setEnrichmentPhase(data.autoFill.summary || 'Found decision maker!');
 
-          // Update the form with auto-filled data
+          // Update the form with auto-filled data (only fill MISSING fields, never overwrite existing OCR data)
           if (onAutoFill && data.autoFill.filled) {
             const filledFields: Record<string, string> = {};
-            if (data.autoFill.filled.firstName) filledFields.firstName = data.autoFill.filled.firstName;
-            if (data.autoFill.filled.lastName) filledFields.lastName = data.autoFill.filled.lastName;
-            if (data.autoFill.filled.company) filledFields.company = data.autoFill.filled.company;
-            if (data.autoFill.filled.jobTitle) filledFields.jobTitle = data.autoFill.filled.jobTitle;
-            if (data.autoFill.filled.email) filledFields.email = data.autoFill.filled.email;
-            if (data.autoFill.filled.phone) filledFields.phone = data.autoFill.filled.phone;
+            // Only auto-fill fields that were originally empty from OCR
+            if (data.autoFill.filled.firstName && !fields.firstName) filledFields.firstName = data.autoFill.filled.firstName;
+            if (data.autoFill.filled.lastName && !fields.lastName) filledFields.lastName = data.autoFill.filled.lastName;
+            if (data.autoFill.filled.company && !fields.company) filledFields.company = data.autoFill.filled.company;
+            if (data.autoFill.filled.jobTitle && !fields.jobTitle) filledFields.jobTitle = data.autoFill.filled.jobTitle;
+            if (data.autoFill.filled.email && !fields.email) filledFields.email = data.autoFill.filled.email;
+            if (data.autoFill.filled.phone && !fields.phone) filledFields.phone = data.autoFill.filled.phone;
+            console.log('🤖 Auto-filling only missing fields:', filledFields);
             onAutoFill(filledFields);
           }
         }
@@ -292,6 +299,7 @@ export default function ScanPage() {
 
     try {
       // Step 1: Save contact
+      console.log('📝 Saving contact with fields:', fields);
       const response = await fetch('/api/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,6 +310,8 @@ export default function ScanPage() {
           phone: fields.phone,
           company: fields.company,
           jobTitle: fields.jobTitle,
+          website: fields.website,
+          address: fields.address,
           cardImageUrl: uploadedImageUrl,
           cardImagePath: uploadedImagePath,
           ocrConfidence: ocrResult?.confidence,

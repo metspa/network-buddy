@@ -100,6 +100,8 @@ export type Contact = {
   scan_latitude: number | null;
   scan_longitude: number | null;
   scan_location_accuracy: number | null;
+  // Contact address (from OCR)
+  address: string | null;
 };
 
 export type NewContact = {
@@ -109,6 +111,8 @@ export type NewContact = {
   phone?: string;
   company?: string;
   job_title?: string;
+  company_website?: string;
+  address?: string;
   card_image_url: string;
   card_image_path: string;
   ocr_confidence?: number;
