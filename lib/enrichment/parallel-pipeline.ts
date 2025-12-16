@@ -20,6 +20,34 @@ import {
   getNewsCacheKey,
 } from './cache';
 
+// Common free email domains that shouldn't be used as company websites
+const FREE_EMAIL_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
+  'icloud.com', 'mail.com', 'protonmail.com', 'zoho.com', 'ymail.com',
+  'live.com', 'msn.com', 'me.com', 'mac.com', 'inbox.com',
+];
+
+/**
+ * Extract website URL from email domain
+ * Returns null for free email providers (Gmail, Yahoo, etc.)
+ */
+function extractWebsiteFromEmail(email: string): string | null {
+  try {
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!domain) return null;
+
+    // Skip free email providers
+    if (FREE_EMAIL_DOMAINS.includes(domain)) {
+      return null;
+    }
+
+    // Return as website URL
+    return `https://${domain}`;
+  } catch {
+    return null;
+  }
+}
+
 export type ParallelEnrichmentResult = {
   success: boolean;
   // Phase 1: GMB data (PRIORITY - shown first to user)
@@ -397,6 +425,21 @@ export async function enrichContactParallel(
     // PHASE 2 & 3: Run LinkedIn, Apollo, and Deep Research in PARALLEL
     onProgress?.('parallel', 'Starting parallel enrichment (LinkedIn, Apollo, Deep Research)...');
 
+    // Extract website from email domain if no website exists
+    const websiteFromEmail = contact.email && !contact.company_website
+      ? extractWebsiteFromEmail(contact.email)
+      : null;
+
+    // Use best available website: OCR > GMB > Email domain
+    const bestWebsite = contact.company_website || gmbData?.website || websiteFromEmail || null;
+
+    console.log('🌐 Website sources:', {
+      fromOCR: contact.company_website,
+      fromGMB: gmbData?.website,
+      fromEmail: websiteFromEmail,
+      bestWebsite,
+    });
+
     const [linkedInResult, apolloResult, deepResult] = await Promise.all([
       // LinkedIn search
       phase2_linkedin(
@@ -419,7 +462,7 @@ export async function enrichContactParallel(
       // Deep research (Perplexity, news, social, company info)
       phase3_deep(
         contact.company,
-        gmbData?.website || null,
+        bestWebsite,
         onProgress
       ),
     ]);
@@ -480,11 +523,17 @@ export async function enrichContactParallel(
     const enrichedEmail = contact.email || apolloResult?.email || null;
     const enrichedPhone = contact.phone || apolloResult?.phone || null;
 
+    // Use best website from all sources (order: existing OCR > GMB > Apollo > Serper > email domain)
+    const finalWebsite = bestWebsite || apolloResult?.organization?.website || deepResult.companyInfo?.website;
+
     console.log('📊 Enrichment results:', {
       linkedIn: bestLinkedInUrl ? 'found' : 'not found',
       apolloEmail: apolloResult?.email ? 'found' : 'not found',
       apolloPhone: apolloResult?.phone ? 'found' : 'not found',
       socialMedia: socialMedia ? Object.keys(socialMedia).filter(k => (socialMedia as any)[k]).join(', ') : 'none',
+      website: finalWebsite || 'not found',
+      perplexityDescription: deepResult.perplexityData?.company_description ? 'found' : 'not found',
+      executives: rankedExecutives?.length || 0,
     });
 
     // Update contact with ALL data
@@ -507,8 +556,8 @@ export async function enrichContactParallel(
       email: enrichedEmail,
       phone: enrichedPhone,
 
-      // Deep research
-      company_website: gmbData?.website || apolloResult?.organization?.website || deepResult.companyInfo?.website,
+      // Deep research - Use finalWebsite which includes OCR website and email domain extraction
+      company_website: finalWebsite,
       company_industry: deepResult.companyInfo?.industry,
       recent_news: deepResult.news,
 
@@ -531,7 +580,7 @@ export async function enrichContactParallel(
       // Service provider
       is_service_provider: isServiceProvider,
       service_category: category,
-      website_status: gmbData?.website ? 'active' : null,
+      website_status: finalWebsite ? 'active' : null,
 
       // AI insights
       ai_summary: summaryResult.summary,
@@ -585,7 +634,7 @@ export async function enrichContactParallel(
       // LinkedIn
       linkedInUrl: bestLinkedInUrl,
       // Deep research
-      companyWebsite: gmbData?.website || apolloResult?.organization?.website || deepResult.companyInfo?.website,
+      companyWebsite: finalWebsite,
       companyIndustry: deepResult.companyInfo?.industry,
       recentNews: deepResult.news,
       perplexityData: deepResult.perplexityData,

@@ -11,6 +11,9 @@ export type SocialMediaProfiles = {
   linkedin_company: string | null;
 };
 
+// Track if we've already logged the API key warning
+let serperKeyWarningLogged = false;
+
 /**
  * Search for a single social media platform profile
  */
@@ -23,7 +26,11 @@ async function searchSocialPlatform(
     const apiKey = process.env.SERPER_API_KEY;
 
     if (!apiKey) {
-      console.warn('SERPER_API_KEY not set, skipping social search');
+      if (!serperKeyWarningLogged) {
+        console.error('❌ SERPER_API_KEY not set - Social media search disabled');
+        console.error('   Get your API key at https://serper.dev (different from SerpApi!)');
+        serperKeyWarningLogged = true;
+      }
       return null;
     }
 
@@ -42,7 +49,8 @@ async function searchSocialPlatform(
     });
 
     if (!response.ok) {
-      console.error(`Serper API error for ${platform}: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Serper API error for ${platform} (${response.status}):`, errorText.slice(0, 200));
       return null;
     }
 

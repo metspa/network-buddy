@@ -26,13 +26,17 @@ export async function searchLinkedInProfile(
     const apiKey = process.env.SERPER_API_KEY;
 
     if (!apiKey) {
-      throw new Error('SERPER_API_KEY environment variable not set');
+      console.error('❌ SERPER_API_KEY not set - LinkedIn search disabled');
+      console.error('   Get your API key at https://serper.dev (different from SerpApi!)');
+      return { url: null, snippet: null, title: null };
     }
 
     // Build search query
     const nameQuery = `"${firstName} ${lastName}"`;
     const companyQuery = company ? ` ${company}` : '';
     const query = `${nameQuery}${companyQuery} site:linkedin.com/in`;
+
+    console.log('🔍 Serper LinkedIn search:', { query, keyLength: apiKey.length });
 
     const response = await fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -47,7 +51,10 @@ export async function searchLinkedInProfile(
     });
 
     if (!response.ok) {
-      throw new Error(`Serper API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Serper API error (${response.status}):`, errorText);
+      console.error('   NOTE: SERPER_API_KEY (serper.dev) is DIFFERENT from SERPAPI_API_KEY (serpapi.com)!');
+      return { url: null, snippet: null, title: null };
     }
 
     const data = await response.json();
