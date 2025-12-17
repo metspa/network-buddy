@@ -1123,7 +1123,7 @@ export default function LandingPage() {
                 { text: 'Buy extra credits anytime', bold: false },
                 { text: 'Priority support', bold: false }
               ],
-              cta: 'Start 7-Day Free Trial',
+              cta: 'Go Starter',
               featured: true
             },
             {
