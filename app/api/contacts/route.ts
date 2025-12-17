@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContacts, createContact } from '@/lib/database/contacts';
 import { createClient } from '@/lib/supabase/server';
-import { canUserEnrich } from '@/lib/services/usage-limiter';
+import { canUserEnrich, decrementUsage } from '@/lib/services/usage-limiter';
 
 /**
  * GET /api/contacts
@@ -112,20 +112,14 @@ export async function POST(request: NextRequest) {
       scan_location_accuracy: body.scanLocationAccuracy || undefined,
     });
 
-    // Increment scan count after successful contact creation
+    // CRITICAL: Decrement usage after successful contact creation
+    // This handles both subscription scans AND credits correctly
     try {
-      const { error } = await supabase.rpc('increment_scan_count', {
-        p_user_id: user.id,
-      });
-
-      if (error) {
-        console.error('Failed to increment scan count:', error);
-      } else {
-        console.log('✅ Scan count incremented for user:', user.id);
-      }
-    } catch (scanError) {
-      console.error('Error incrementing scan count:', scanError);
-      // Don't fail the contact creation if scan tracking fails
+      await decrementUsage(user.id, contact.id, false);
+      console.log('✅ Usage decremented for user:', user.id);
+    } catch (usageError) {
+      console.error('Failed to decrement usage:', usageError);
+      // Don't fail the contact creation if usage tracking fails
     }
 
     return NextResponse.json({ contact }, { status: 201 });

@@ -1,6 +1,7 @@
 // API endpoint for creating contacts manually (without business card image)
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { canUserEnrich, decrementUsage } from '@/lib/services/usage-limiter';
 
 /**
  * POST /api/contacts/create
@@ -14,6 +15,21 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // CHECK LIMIT BEFORE CREATING CONTACT
+    const usageCheck = await canUserEnrich(user.id);
+
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'scan_limit_reached',
+          message: usageCheck.reason,
+          subscription: usageCheck.subscription,
+          credits: usageCheck.credits,
+        },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

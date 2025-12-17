@@ -6,11 +6,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ImagePreview from '@/components/camera/ImagePreview';
-import OCRResultEditor, { type OCRFields } from '@/components/ocr/OCRResultEditor';
 import EnrichmentProgress from '@/components/enrichment/EnrichmentProgress';
+import CreditsPurchaseModal from '@/components/credits/CreditsPurchaseModal';
 import type { GeoLocation } from '@/lib/services/geolocation';
 
-type Step = 'capture' | 'preview' | 'processing' | 'edit' | 'enriching';
+type SubscriptionInfo = {
+  plan: string;
+  scansRemaining: number;
+  scansLimit: number;
+  scansUsed: number;
+};
+
+type CreditsInfo = {
+  balance: number;
+};
+
+type Step = 'capture' | 'preview' | 'processing' | 'enriching';
 
 type EnrichmentProgressItem = {
   step: string;
@@ -42,22 +53,6 @@ type GMBData = {
   priceRange?: string;
 };
 
-type AutoFillData = {
-  filled: {
-    firstName?: string | null;
-    lastName?: string | null;
-    company?: string | null;
-    jobTitle?: string | null;
-    email?: string | null;
-    phone?: string | null;
-  };
-  autoFilledFields: string[];
-  source: string;
-  confidence: number;
-  summary: string;
-  decisionMakers?: any[];
-};
-
 export default function ScanPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('capture');
@@ -66,7 +61,6 @@ export default function ScanPage() {
   const [uploadedImagePath, setUploadedImagePath] = useState<string>('');
   const [ocrResult, setOcrResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Enrichment state
@@ -74,11 +68,11 @@ export default function ScanPage() {
   const [gmbData, setGmbData] = useState<GMBData | null>(null);
   const [linkedInUrl, setLinkedInUrl] = useState<string | null>(null);
   const [enrichmentPhase, setEnrichmentPhase] = useState<string>('');
-  const [showAllReviews, setShowAllReviews] = useState(false);
-  const [showAllPhotos, setShowAllPhotos] = useState(false);
-  const [autoFillData, setAutoFillData] = useState<AutoFillData | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState<SubscriptionInfo | null>(null);
+  const [currentCredits, setCurrentCredits] = useState<CreditsInfo | null>(null);
 
   // Location state (GPS captured when scanning)
   const [capturedLocation, setCapturedLocation] = useState<GeoLocation | null>(null);
@@ -124,9 +118,11 @@ export default function ScanPage() {
 
     setStep('processing');
     setError(null);
+    setEnrichmentProgress([]);
 
     try {
       // Step 1: Upload image
+      setEnrichmentPhase('Uploading image...');
       const uploadFormData = new FormData();
       uploadFormData.append('file', capturedFile);
 
@@ -145,6 +141,7 @@ export default function ScanPage() {
       setUploadedImagePath(uploadData.path);
 
       // Step 2: Run OCR
+      setEnrichmentPhase('Reading business card with AI...');
       const ocrFormData = new FormData();
       ocrFormData.append('file', capturedFile);
 
@@ -160,147 +157,13 @@ export default function ScanPage() {
 
       const ocrData = await ocrResponse.json();
       console.log('🔍 OCR Result received:', JSON.stringify(ocrData, null, 2));
-      console.log('📧 Email from OCR:', ocrData.fields?.email);
-      console.log('📱 Phone from OCR:', ocrData.fields?.phone);
-      console.log('🌐 Website from OCR:', ocrData.fields?.website);
-      console.log('📍 Address from OCR:', ocrData.fields?.address);
       setOcrResult(ocrData);
 
-      // Step 3: Start preview enrichment with auto-fill
-      // This will fetch GMB data AND auto-fill missing contact info
-      setEnrichmentPhase('Looking up company information...');
-      startPreviewEnrichment(ocrData.fields, capturedLocation, (filledFields) => {
-        // Update OCR result with auto-filled data
-        setOcrResult((prev: any) => ({
-          ...prev,
-          fields: { ...prev.fields, ...filledFields },
-        }));
-      });
+      // Step 3: IMMEDIATELY save contact and start enrichment (skip edit step)
+      setEnrichmentPhase('Saving contact...');
 
-      setStep('edit');
-    } catch (err) {
-      console.error('Processing error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setStep('preview');
-    }
-  };
-
-  // Preview enrichment - fetch GMB data and auto-fill missing contact info
-  const startPreviewEnrichment = async (
-    fields: { firstName?: string; lastName?: string; company?: string; email?: string; phone?: string; jobTitle?: string },
-    location: GeoLocation | null,
-    onAutoFill?: (filled: Record<string, string>) => void
-  ) => {
-    console.log('🔍 Starting preview enrichment with fields:', fields);
-    if (location) {
-      console.log('📍 Using GPS location:', location.latitude, location.longitude);
-    }
-
-    // Check if we need auto-fill (missing name or contact info)
-    const needsAutoFill = !fields.firstName || !fields.lastName || !fields.email || !fields.phone;
-    const hasCompanyOrEmail = fields.company || fields.email;
-
-    if (!hasCompanyOrEmail) {
-      console.log('❌ No company or email, skipping enrichment');
-      setEnrichmentPhase('');
-      return;
-    }
-
-    try {
-      if (needsAutoFill) {
-        setEnrichmentPhase('Finding contact information...');
-      } else {
-        setEnrichmentPhase(`Searching for "${fields.company}" on Google...`);
-      }
-
-      // Fetch GMB data AND auto-fill missing info
-      const response = await fetch('/api/enrich/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company: fields.company,
-          firstName: fields.firstName,
-          lastName: fields.lastName,
-          email: fields.email,
-          phone: fields.phone,
-          jobTitle: fields.jobTitle,
-          autoFill: needsAutoFill,
-          // Include GPS coordinates for precise location matching (e.g., chain stores)
-          latitude: location?.latitude,
-          longitude: location?.longitude,
-        }),
-      });
-
-      console.log('📡 Preview API response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📊 Preview API data:', data);
-
-        // Handle auto-fill results
-        if (data.autoFill && data.autoFill.autoFilledFields?.length > 0) {
-          console.log('🤖 Auto-filled fields:', data.autoFill.autoFilledFields);
-          setAutoFillData(data.autoFill);
-          setEnrichmentPhase(data.autoFill.summary || 'Found decision maker!');
-
-          // Update the form with auto-filled data (only fill MISSING fields, never overwrite existing OCR data)
-          if (onAutoFill && data.autoFill.filled) {
-            const filledFields: Record<string, string> = {};
-            // Only auto-fill fields that were originally empty from OCR
-            if (data.autoFill.filled.firstName && !fields.firstName) filledFields.firstName = data.autoFill.filled.firstName;
-            if (data.autoFill.filled.lastName && !fields.lastName) filledFields.lastName = data.autoFill.filled.lastName;
-            if (data.autoFill.filled.company && !fields.company) filledFields.company = data.autoFill.filled.company;
-            if (data.autoFill.filled.jobTitle && !fields.jobTitle) filledFields.jobTitle = data.autoFill.filled.jobTitle;
-            if (data.autoFill.filled.email && !fields.email) filledFields.email = data.autoFill.filled.email;
-            if (data.autoFill.filled.phone && !fields.phone) filledFields.phone = data.autoFill.filled.phone;
-            console.log('🤖 Auto-filling only missing fields:', filledFields);
-            onAutoFill(filledFields);
-          }
-        }
-
-        // Handle GMB data
-        if (data.gmb && data.gmb.rating) {
-          console.log(`✅ Found GMB data: ${data.gmb.rating} stars, ${data.gmb.review_count} reviews`);
-          setGmbData({
-            name: data.gmb.name,
-            rating: data.gmb.rating || 0,
-            reviewCount: data.gmb.review_count || 0,
-            reviews: data.gmb.reviews || [],
-            photos: data.gmb.photos || [],
-            hours: data.gmb.hours,
-            address: data.gmb.address,
-            phone: data.gmb.phone,
-            website: data.gmb.website,
-            categories: data.gmb.categories || [],
-            priceRange: data.gmb.price_range,
-          });
-
-          if (!data.autoFill?.autoFilledFields?.length) {
-            setEnrichmentPhase(`Found ${data.gmb.review_count || 0} reviews!`);
-          }
-        } else if (!data.autoFill?.autoFilledFields?.length) {
-          console.log('⚠️ No GMB data found');
-          setEnrichmentPhase('No reviews found (that\'s okay!)');
-          setTimeout(() => setEnrichmentPhase(''), 3000);
-        }
-      } else {
-        console.error('❌ Preview API error:', response.status);
-        setEnrichmentPhase('');
-      }
-    } catch (err) {
-      console.error('❌ Preview enrichment error:', err);
-      setEnrichmentPhase('');
-    }
-  };
-
-  const handleSaveContact = async (fields: OCRFields) => {
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      // Step 1: Save contact
-      console.log('📝 Saving contact with fields:', fields);
-      const response = await fetch('/api/contacts', {
+      const fields = ocrData.fields || {};
+      const saveResponse = await fetch('/api/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -312,136 +175,152 @@ export default function ScanPage() {
           jobTitle: fields.jobTitle,
           website: fields.website,
           address: fields.address,
-          cardImageUrl: uploadedImageUrl,
-          cardImagePath: uploadedImagePath,
-          ocrConfidence: ocrResult?.confidence,
-          ocrRawText: ocrResult?.rawText,
-          // Include GPS coordinates captured when scanning
+          cardImageUrl: uploadData.url,
+          cardImagePath: uploadData.path,
+          ocrConfidence: ocrData.confidence,
+          ocrRawText: ocrData.rawText,
           scanLatitude: capturedLocation?.latitude,
           scanLongitude: capturedLocation?.longitude,
           scanLocationAccuracy: capturedLocation?.accuracy,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
 
         // Handle scan limit reached
         if (errorData.error === 'scan_limit_reached') {
+          // Capture subscription and credits info for the modal
+          if (errorData.subscription) {
+            setCurrentSubscription(errorData.subscription);
+          }
+          if (errorData.credits) {
+            setCurrentCredits(errorData.credits);
+          }
           setShowUpgradeModal(true);
-          setIsSaving(false);
+          setStep('preview');
           return;
         }
 
         throw new Error(errorData.message || errorData.error || 'Failed to save contact');
       }
 
-      const { contact } = await response.json();
+      const { contact } = await saveResponse.json();
 
-      // Step 2: Trigger enrichment with real-time streaming
-      const shouldEnrich = (fields.company || (fields.firstName && fields.lastName));
+      // Step 4: Start enrichment with futuristic UI
+      setStep('enriching');
+      setEnrichmentPhase('Initializing AI enrichment...');
 
-      if (shouldEnrich) {
-        setStep('enriching');
-        setEnrichmentPhase('Starting enrichment...');
+      // Add initial progress items for the futuristic effect
+      setEnrichmentProgress([
+        { step: 'save', message: '✅ Contact saved successfully', data: null },
+        { step: 'init', message: '🚀 Starting deep research...', data: null },
+      ]);
 
-        // Connect to SSE endpoint for real-time progress
-        const eventSource = new EventSource(`/api/enrich/stream/${contact.id}`);
-        let enrichmentComplete = false;
+      // Connect to SSE endpoint for real-time progress
+      const eventSource = new EventSource(`/api/enrich/stream/${contact.id}`);
+      let enrichmentComplete = false;
 
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-            // Update progress
-            setEnrichmentProgress((prev) => [...prev, {
-              step: data.step,
-              message: data.message,
-              data: data.data,
-            }]);
+          // Update progress with futuristic messages
+          const progressMessage = getEnrichmentMessage(data.step, data.message, data.data);
+          setEnrichmentProgress((prev) => [...prev, {
+            step: data.step,
+            message: progressMessage,
+            data: data.data,
+          }]);
 
-            // Phase 1: GMB data (PRIORITY - show immediately!)
-            if (data.step === 'gmb' && data.data) {
-              setEnrichmentPhase('Found Google My Business data!');
-              setGmbData({
-                rating: data.data.rating || 0,
-                reviewCount: data.data.reviewCount || 0,
-                reviews: data.data.reviews || [],
-                photos: data.data.photos || [],
-              });
-            }
-
-            // Phase 2: LinkedIn profile
-            if (data.step === 'linkedin' && data.data?.url) {
-              setEnrichmentPhase('Found LinkedIn profile!');
-              setLinkedInUrl(data.data.url);
-            }
-
-            // Phase 3: Deep research
-            if (data.step === 'deep') {
-              setEnrichmentPhase('Deep research complete!');
-            }
-
-            // Enrichment complete
-            if (data.type === 'complete') {
-              enrichmentComplete = true;
-              setEnrichmentPhase('Enrichment complete!');
-              eventSource.close();
-
-              // Redirect after showing results for 2 seconds
-              setTimeout(() => {
-                router.push(`/contacts/${contact.id}`);
-              }, 2000);
-            }
-
-            // Handle errors
-            if (data.type === 'error') {
-              console.error('Enrichment error:', data.message);
-              setEnrichmentPhase('Enrichment had some issues, but contact was saved');
-              eventSource.close();
-
-              // Still redirect after a delay
-              setTimeout(() => {
-                router.push(`/contacts/${contact.id}`);
-              }, 2000);
-            }
-          } catch (parseError) {
-            console.error('Error parsing SSE message:', parseError);
+          // Phase 1: GMB data (PRIORITY - show immediately!)
+          if (data.step === 'gmb' && data.data) {
+            setEnrichmentPhase('🏢 Business intel acquired!');
+            setGmbData({
+              rating: data.data.rating || 0,
+              reviewCount: data.data.reviewCount || 0,
+              reviews: data.data.reviews || [],
+              photos: data.data.photos || [],
+            });
           }
-        };
 
-        eventSource.onerror = () => {
-          console.error('SSE connection closed or failed');
-          eventSource.close();
+          // Phase 2: LinkedIn profile
+          if (data.step === 'linkedin' && data.data?.url) {
+            setEnrichmentPhase('💼 LinkedIn profile found!');
+            setLinkedInUrl(data.data.url);
+          }
 
-          // Redirect even if streaming fails - contact is already saved
-          if (!enrichmentComplete) {
-            setEnrichmentPhase('Enrichment continuing in background...');
+          // Enrichment complete
+          if (data.type === 'complete') {
+            enrichmentComplete = true;
+            setEnrichmentPhase('✨ Enrichment complete!');
+            eventSource.close();
+
             setTimeout(() => {
               router.push(`/contacts/${contact.id}`);
             }, 1500);
           }
-        };
 
-        // Timeout after 20 seconds
-        setTimeout(() => {
-          if (!enrichmentComplete) {
+          // Handle errors
+          if (data.type === 'error') {
+            console.error('Enrichment error:', data.message);
+            setEnrichmentPhase('⚠️ Some data couldn\'t be found');
             eventSource.close();
-            setEnrichmentPhase('Taking longer than expected, redirecting...');
+
             setTimeout(() => {
               router.push(`/contacts/${contact.id}`);
-            }, 1000);
+            }, 2000);
           }
-        }, 20000);
-      } else {
-        // No enrichment needed, redirect immediately
-        router.push(`/contacts/${contact.id}`);
-      }
+        } catch (parseError) {
+          console.error('Error parsing SSE message:', parseError);
+        }
+      };
+
+      eventSource.onerror = () => {
+        console.error('SSE connection closed or failed');
+        eventSource.close();
+
+        if (!enrichmentComplete) {
+          setEnrichmentPhase('🔄 Enrichment continuing in background...');
+          setTimeout(() => {
+            router.push(`/contacts/${contact.id}`);
+          }, 1500);
+        }
+      };
+
+      // Timeout after 25 seconds
+      setTimeout(() => {
+        if (!enrichmentComplete) {
+          eventSource.close();
+          setEnrichmentPhase('⏳ Taking longer than expected, redirecting...');
+          setTimeout(() => {
+            router.push(`/contacts/${contact.id}`);
+          }, 1000);
+        }
+      }, 25000);
+
     } catch (err) {
-      console.error('Save error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save contact');
-      setIsSaving(false);
+      console.error('Processing error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setStep('preview');
     }
+  };
+
+  // Helper function to generate futuristic progress messages
+  const getEnrichmentMessage = (step: string, message: string, data: any): string => {
+    const messages: Record<string, string> = {
+      'start': '🔌 Connecting to data networks...',
+      'gmb': data?.rating ? `⭐ Found ${data.rating} star rating with ${data.reviewCount || 0} reviews` : '🔍 Searching Google Maps...',
+      'linkedin': data?.url ? '💼 LinkedIn profile acquired' : '🔍 Searching LinkedIn...',
+      'apollo': '📧 Verifying contact data with Apollo...',
+      'parallel': '⚡ Running parallel data extraction...',
+      'perplexity': '🧠 AI analyzing company profile...',
+      'social': '📱 Finding social media presence...',
+      'news': '📰 Scanning recent news mentions...',
+      'summary': '✍️ Generating AI insights...',
+      'complete': '✅ All data sources processed!',
+    };
+    return messages[step] || message;
   };
 
   const handleCancel = () => {
@@ -498,9 +377,8 @@ export default function ScanPage() {
             <p className="text-sm text-gray-300 text-right">
               {step === 'capture' && 'Capture a new contact'}
               {step === 'preview' && 'Review your photo'}
-              {step === 'processing' && 'Processing...'}
-              {step === 'edit' && 'Review and edit'}
-              {step === 'enriching' && 'Enriching contact...'}
+              {step === 'processing' && 'Processing card...'}
+              {step === 'enriching' && 'AI enrichment in progress...'}
             </p>
           </div>
         </div>
@@ -562,331 +440,61 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Step 3: Processing */}
+        {/* Step 3: Processing - Futuristic UI */}
         {step === 'processing' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <svg
-              className="w-16 h-16 text-blue-600 mx-auto mb-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            <p className="text-lg font-semibold text-gray-900 mb-2">Processing your business card...</p>
-            <p className="text-sm text-gray-600">
-              We're extracting contact information and uploading the image.
-            </p>
+          <div className="space-y-6">
+            {/* Futuristic Processing Card */}
+            <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black rounded-2xl border border-violet-500/30 p-8 text-center relative overflow-hidden">
+              {/* Animated background effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-500/10 animate-pulse" />
+
+              {/* Spinning rings */}
+              <div className="relative w-24 h-24 mx-auto mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-violet-500/30 animate-spin" style={{ animationDuration: '3s' }} />
+                <div className="absolute inset-2 rounded-full border-4 border-blue-500/40 animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+                <div className="absolute inset-4 rounded-full border-4 border-cyan-500/50 animate-spin" style={{ animationDuration: '1.5s' }} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-violet-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+              </div>
+
+              <h2 className="text-xl font-bold text-white mb-2 relative z-10">
+                {enrichmentPhase || 'Initializing AI...'}
+              </h2>
+              <p className="text-gray-400 text-sm relative z-10">
+                Our AI is reading and analyzing your business card
+              </p>
+
+              {/* Progress bar */}
+              <div className="mt-6 relative z-10">
+                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-500 animate-pulse" style={{ width: '60%' }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Card preview (smaller) */}
+            {capturedFile && (
+              <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-4">
+                <p className="text-xs text-gray-500 mb-2">SCANNING</p>
+                <div className="relative aspect-[1.6/1] max-w-xs mx-auto rounded-lg overflow-hidden">
+                  <img
+                    src={URL.createObjectURL(capturedFile)}
+                    alt="Business card"
+                    className="w-full h-full object-cover opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-violet-500/20 to-transparent" />
+                  {/* Scanning line effect */}
+                  <div className="absolute inset-x-0 h-0.5 bg-cyan-400 animate-bounce" style={{ top: '50%', animationDuration: '1s' }} />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Step 4: Edit */}
-        {step === 'edit' && ocrResult && (
-          <div className="space-y-4">
-            {/* Compact Image Preview */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <ImagePreview file={capturedFile} showRetake={false} />
-            </div>
-
-            {/* GMB Preview Data (shows while user edits) */}
-            {gmbData && gmbData.rating > 0 && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                {/* Header with rating and business info */}
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 border-b border-yellow-200">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-yellow-100 rounded-full p-2">
-                      <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      {gmbData.name && (
-                        <h3 className="font-bold text-gray-900 text-lg">{gmbData.name}</h3>
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg
-                              key={star}
-                              className={`w-5 h-5 ${star <= Math.round(gmbData.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                        <span className="font-bold text-gray-900">{gmbData.rating.toFixed(1)}</span>
-                        <span className="text-gray-600">({gmbData.reviewCount.toLocaleString()} reviews)</span>
-                      </div>
-                      {/* Categories and hours */}
-                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-600">
-                        {gmbData.categories && gmbData.categories.length > 0 && (
-                          <span className="bg-gray-100 px-2 py-0.5 rounded">{gmbData.categories[0]}</span>
-                        )}
-                        {gmbData.hours && (
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {gmbData.hours}
-                          </span>
-                        )}
-                        {gmbData.priceRange && (
-                          <span className="text-green-600 font-medium">{gmbData.priceRange}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Business Details */}
-                {(gmbData.address || gmbData.phone || gmbData.website) && (
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm">
-                    <div className="flex flex-wrap gap-4">
-                      {gmbData.address && (
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span className="truncate max-w-[200px]">{gmbData.address}</span>
-                        </div>
-                      )}
-                      {gmbData.phone && (
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <span>{gmbData.phone}</span>
-                        </div>
-                      )}
-                      {gmbData.website && (
-                        <a href={gmbData.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                          </svg>
-                          <span>Website</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Photos Grid */}
-                {gmbData.photos && gmbData.photos.length > 0 && (
-                  <div className="p-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm">Business Photos</h4>
-                      {gmbData.photos.length > 6 && (
-                        <button
-                          onClick={() => setShowAllPhotos(!showAllPhotos)}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          {showAllPhotos ? 'Show less' : `+${gmbData.photos.length - 6} more`}
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {gmbData.photos.slice(0, showAllPhotos ? 12 : 6).map((photo, index) => (
-                        <img
-                          key={index}
-                          src={photo.thumbnail || photo.url}
-                          alt={photo.title || `Business photo ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-                          onClick={() => window.open(photo.url, '_blank')}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Customer Reviews */}
-                {gmbData.reviews && gmbData.reviews.length > 0 && (
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-gray-900 text-sm">Customer Reviews</h4>
-                      {gmbData.reviews.length > 3 && (
-                        <button
-                          onClick={() => setShowAllReviews(!showAllReviews)}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          {showAllReviews ? 'Show less' : `See all ${gmbData.reviews.length} reviews`}
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      {gmbData.reviews.slice(0, showAllReviews ? 10 : 3).map((review, index) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
-                                {review.author.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-900 text-sm">{review.author}</span>
-                                <div className="flex items-center gap-1">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <svg
-                                      key={star}
-                                      className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-500 flex items-center gap-2">
-                              {review.date && <span>{review.date}</span>}
-                              {review.likes > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                                  </svg>
-                                  {review.likes}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-gray-700 text-sm leading-relaxed">{review.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* No reviews message */}
-                {(!gmbData.reviews || gmbData.reviews.length === 0) && (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    <p>No detailed reviews available yet.</p>
-                    <p className="text-xs mt-1">Reviews will be fetched during full enrichment.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* GMB Loading Skeleton */}
-            {enrichmentPhase && !gmbData && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                {/* Header skeleton */}
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 border-b border-yellow-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-5 h-5 text-yellow-600 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="text-sm text-gray-700">{enrichmentPhase}</span>
-                    </div>
-                  </div>
-                  {/* Skeleton content */}
-                  <div className="space-y-2 animate-pulse">
-                    <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <div key={i} className="w-4 h-4 bg-gray-200 rounded"></div>
-                        ))}
-                      </div>
-                      <div className="h-4 bg-gray-200 rounded w-24"></div>
-                    </div>
-                  </div>
-                </div>
-                {/* Photos skeleton */}
-                <div className="p-4 border-b border-gray-200">
-                  <div className="h-4 bg-gray-200 rounded w-28 mb-2 animate-pulse"></div>
-                  <div className="grid grid-cols-3 gap-2 animate-pulse">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div key={i} className="aspect-square bg-gray-200 rounded-lg"></div>
-                    ))}
-                  </div>
-                </div>
-                {/* Reviews skeleton */}
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded w-32 mb-3 animate-pulse"></div>
-                  <div className="space-y-3 animate-pulse">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                          <div className="space-y-1">
-                            <div className="h-3 bg-gray-200 rounded w-20"></div>
-                            <div className="h-2 bg-gray-200 rounded w-16"></div>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="h-3 bg-gray-200 rounded w-full"></div>
-                          <div className="h-3 bg-gray-200 rounded w-4/5"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Auto-Fill Indicator */}
-            {autoFillData && autoFillData.autoFilledFields.length > 0 && (
-              <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-blue-900">
-                      Auto-filled from {autoFillData.source === 'apollo' ? 'Apollo.io' : autoFillData.source === 'perplexity' ? 'company research' : 'multiple sources'}
-                    </p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      {autoFillData.summary}
-                    </p>
-                    {autoFillData.decisionMakers && autoFillData.decisionMakers.length > 1 && (
-                      <p className="text-xs text-blue-600 mt-2">
-                        {autoFillData.decisionMakers.length - 1} other decision maker{autoFillData.decisionMakers.length > 2 ? 's' : ''} found
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {autoFillData.confidence}% confidence
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* OCR Editor - More Compact */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <OCRResultEditor
-                initialFields={ocrResult.fields}
-                confidence={ocrResult.confidence}
-                onSave={handleSaveContact}
-                onCancel={handleCancel}
-                isSaving={isSaving}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Enriching - Full screen progress */}
+        {/* Step 4: Enriching - Full screen progress */}
         {step === 'enriching' && (
           <>
             {/* Sticky Progress Bar at Top */}
@@ -1057,52 +665,94 @@ export default function ScanPage() {
       {/* Upgrade Modal - Shown when scan limit reached */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-700 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors p-1"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Scan Limit Reached</h2>
+              <h2 className="text-xl font-bold text-white mb-2">
+                {currentSubscription?.plan === 'growth' ? 'Monthly Limit Reached' : 'Scan Limit Reached'}
+              </h2>
               <p className="text-gray-400 text-sm">
-                You've used all your free contacts. Upgrade to Starter for 10 enrichments/month, or purchase credits to continue.
+                {currentSubscription?.plan === 'free' && (
+                  <>You've used all 5 free contacts. Upgrade to Starter for 10 enrichments/month, or purchase credits.</>
+                )}
+                {currentSubscription?.plan === 'starter' && (
+                  <>You've used all 10 Starter contacts. Upgrade to Growth for 30 enrichments/month, or purchase credits.</>
+                )}
+                {currentSubscription?.plan === 'growth' && (
+                  <>You've used all 30 Growth contacts this month. Purchase credits to continue scanning.</>
+                )}
+                {!currentSubscription?.plan && (
+                  <>You've reached your limit. Upgrade your plan or purchase credits to continue.</>
+                )}
               </p>
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={async () => {
-                  setUpgradeLoading(true);
-                  try {
-                    const response = await fetch('/api/stripe/create-checkout', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ plan: 'starter' }),
-                    });
-                    const data = await response.json();
-                    if (data.url) {
-                      window.location.href = data.url;
-                    } else {
+              {/* Upgrade button - only show if not on highest plan */}
+              {currentSubscription?.plan !== 'growth' && (
+                <button
+                  onClick={async () => {
+                    setUpgradeLoading(true);
+                    const nextPlan = currentSubscription?.plan === 'starter' ? 'growth' : 'starter';
+                    try {
+                      const response = await fetch('/api/stripe/create-checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: nextPlan }),
+                      });
+                      const data = await response.json();
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        alert('Failed to start upgrade. Please try again.');
+                        setUpgradeLoading(false);
+                      }
+                    } catch (error) {
+                      console.error('Upgrade error:', error);
                       alert('Failed to start upgrade. Please try again.');
                       setUpgradeLoading(false);
                     }
-                  } catch (error) {
-                    console.error('Upgrade error:', error);
-                    alert('Failed to start upgrade. Please try again.');
-                    setUpgradeLoading(false);
-                  }
-                }}
-                disabled={upgradeLoading}
-                className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
-              >
-                {upgradeLoading ? 'Loading...' : 'Upgrade to Starter - $9/mo'}
-              </button>
+                  }}
+                  disabled={upgradeLoading}
+                  className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
+                >
+                  {upgradeLoading ? 'Loading...' : (
+                    currentSubscription?.plan === 'starter'
+                      ? 'Upgrade to Growth - $29/mo'
+                      : 'Upgrade to Starter - $9/mo'
+                  )}
+                </button>
+              )}
 
+              {/* Buy Credits button */}
               <button
-                onClick={() => router.push('/settings')}
-                className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  setShowCreditsModal(true);
+                }}
+                className={`w-full py-3 ${
+                  currentSubscription?.plan === 'growth'
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400'
+                    : 'bg-gradient-to-r from-yellow-600/20 to-orange-600/20 hover:from-yellow-600/30 hover:to-orange-600/30 border border-yellow-600/30'
+                } text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2`}
               >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.736 6.979C9.208 6.193 9.696 6 10 6c.304 0 .792.193 1.264.979a1 1 0 001.715-1.029C12.279 4.784 11.232 4 10 4s-2.279.784-2.979 1.95c-.285.475-.507 1-.67 1.55H6a1 1 0 000 2h.013a9.358 9.358 0 000 1H6a1 1 0 100 2h.351c.163.55.385 1.075.67 1.55C7.721 15.216 8.768 16 10 16s2.279-.784 2.979-1.95a1 1 0 10-1.715-1.029c-.472.786-.96.979-1.264.979-.304 0-.792-.193-1.264-.979a4.265 4.265 0 01-.264-.521H10a1 1 0 100-2H8.017a7.36 7.36 0 010-1H10a1 1 0 100-2H8.472c.08-.185.167-.36.264-.521z" />
+                </svg>
                 Buy Credits
               </button>
 
@@ -1118,6 +768,11 @@ export default function ScanPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Credits Purchase Modal */}
+      {showCreditsModal && (
+        <CreditsPurchaseModal onClose={() => setShowCreditsModal(false)} />
       )}
     </main>
   );
