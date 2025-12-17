@@ -128,12 +128,12 @@ export default function LandingPage() {
               <Link href="/auth/signup" className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-[1.05rem] font-semibold no-underline bg-gradient-to-r from-[#3A83FE] to-[#6366F1] text-white hover:shadow-[0_0_30px_rgba(58,131,254,0.4)] transition-all hover:scale-105">
                 Get started free
               </Link>
-              <button className="bg-transparent text-[#F3F3F2] inline-flex items-center gap-2 px-4 py-3 border border-[#2A2A2A] rounded-xl cursor-pointer font-semibold hover:border-[#3A83FE] hover:text-[#3A83FE] transition-all">
+              <a href="https://youtu.be/W3chpScmdDY" target="_blank" rel="noopener noreferrer" className="bg-transparent text-[#F3F3F2] inline-flex items-center gap-2 px-4 py-3 border border-[#2A2A2A] rounded-xl cursor-pointer font-semibold hover:border-[#3A83FE] hover:text-[#3A83FE] transition-all no-underline">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                 </svg>
                 Watch demo
-              </button>
+              </a>
             </div>
             <p className="text-sm text-[#5E5E5C] flex items-center gap-2 justify-center lg:justify-start">
               <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -1123,7 +1123,7 @@ export default function LandingPage() {
                 { text: 'Buy extra credits anytime', bold: false },
                 { text: 'Priority support', bold: false }
               ],
-              cta: 'Go Starter',
+              cta: 'Get Started Today',
               featured: true
             },
             {
