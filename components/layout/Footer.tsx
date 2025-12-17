@@ -40,9 +40,9 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               <li>
-                <a href="mailto:dave@ilift.com" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
-                  Contact
-                </a>
+                <Link href="/contact" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
+                  Contact Us
+                </Link>
               </li>
             </ul>
           </div>
@@ -54,9 +54,9 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               <li>
-                <a href="tel:855-905-3407" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
+                <Link href="/support" className="text-gray-600 hover:text-gray-900 transition-colors text-sm">
                   Support
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

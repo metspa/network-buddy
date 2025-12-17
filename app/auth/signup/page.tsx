@@ -9,7 +9,7 @@ function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [signupSuccess, setSignupSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,7 +18,6 @@ function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setMessage(null)
     setLoading(true)
 
     const { data, error } = await signUp(email, password, returnUrl || undefined)
@@ -27,12 +26,8 @@ function SignUpForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      setMessage('Check your email for the confirmation link! If you don\'t see it, check your spam folder.')
+      setSignupSuccess(true)
       setLoading(false)
-      // Redirect to login with returnUrl preserved
-      setTimeout(() => {
-        router.push(returnUrl ? `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/auth/login')
-      }, 3000)
     }
   }
 
@@ -49,6 +44,49 @@ function SignUpForm() {
     // OAuth will redirect automatically
   }
 
+  // Show success screen after signup
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#2c2f33] p-4">
+        <div className="max-w-md w-full p-8 bg-[#36393f] rounded-lg shadow-xl border border-[#202225] text-center">
+          {/* Success Icon */}
+          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+
+          <h2 className="text-2xl font-bold text-white mb-4">Check your email!</h2>
+
+          <p className="text-gray-300 mb-6">
+            We've sent a confirmation link to:<br />
+            <span className="text-white font-medium">{email}</span>
+          </p>
+
+          <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4 mb-6">
+            <p className="text-yellow-200 text-sm">
+              <strong>Don't see it?</strong> Check your spam or junk folder. The email should arrive within a few minutes.
+            </p>
+          </div>
+
+          <Link
+            href={returnUrl ? `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/auth/login'}
+            className="inline-block bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Go to Login
+          </Link>
+
+          <p className="text-gray-500 text-sm mt-6">
+            Already confirmed?{' '}
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300">
+              Sign in here
+            </Link>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#2c2f33] p-4">
       <div className="max-w-md w-full space-y-8 p-8 bg-[#36393f] rounded-lg shadow-xl border border-[#202225]">
@@ -61,11 +99,6 @@ function SignUpForm() {
           {error && (
             <div className="rounded-md bg-red-900/30 p-4 border border-red-700/50">
               <p className="text-sm text-red-200">{error}</p>
-            </div>
-          )}
-          {message && (
-            <div className="rounded-md bg-green-900/30 p-4 border border-green-700/50">
-              <p className="text-sm text-green-200">{message}</p>
             </div>
           )}
 

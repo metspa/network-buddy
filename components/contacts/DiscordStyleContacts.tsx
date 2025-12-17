@@ -47,6 +47,7 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddManualModal, setShowAddManualModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Custom categories from database
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
@@ -302,52 +303,81 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
     }
   };
 
+  // Close sidebar when selecting a category on mobile
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setSidebarOpen(false);
+  };
+
   return (
-    <div className="flex h-screen bg-[#36393f]">
+    <div className="flex h-screen bg-[#36393f] relative">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Left Sidebar - Categories */}
-      <div className="w-64 bg-[#2f3136] flex flex-col">
+      <div className={`
+        fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#2f3136] flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         {/* Header */}
         <div className="h-14 px-4 flex items-center justify-between border-b border-[#202225] shadow-md">
           <h2 className="text-white font-semibold">Contacts</h2>
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowAddMenu(!showAddMenu)}
+                className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors"
+                title="Add contact"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showAddMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-[#18191c] rounded-lg shadow-lg border border-[#202225] py-2 z-50">
+                  <Link
+                    href="/scan"
+                    className="flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
+                    onClick={() => setShowAddMenu(false)}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm font-medium">Scan Business Card</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowAddMenu(false);
+                      setShowAddManualModal(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="text-sm font-medium">Add Contact Manually</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* Close button for mobile */}
             <button
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors"
-              title="Add contact"
+              onClick={() => setSidebarOpen(false)}
+              className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors md:hidden"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-
-            {/* Dropdown Menu */}
-            {showAddMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-[#18191c] rounded-lg shadow-lg border border-[#202225] py-2 z-50">
-                <Link
-                  href="/scan"
-                  className="flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
-                  onClick={() => setShowAddMenu(false)}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-sm font-medium">Scan Business Card</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    setShowAddMenu(false);
-                    setShowAddManualModal(true);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-sm font-medium">Add Contact Manually</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -362,8 +392,8 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
           {categories.map(category => (
             <button
               key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`w-full flex items-center justify-between px-2 py-2 rounded mb-1 text-gray-300 hover:bg-[#36393f] transition-colors ${
+              onClick={() => handleCategorySelect(category.id)}
+              className={`w-full flex items-center justify-between px-2 py-2.5 rounded mb-1 text-gray-300 hover:bg-[#36393f] transition-colors ${
                 selectedCategory === category.id ? 'bg-[#36393f] text-white' : ''
               }`}
             >
@@ -378,7 +408,7 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
           {/* Add Category Button */}
           <button
             onClick={() => setShowAddCategory(!showAddCategory)}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded mt-2 text-gray-400 hover:text-white hover:bg-[#36393f] transition-colors"
+            className="w-full flex items-center gap-2 px-2 py-2.5 rounded mt-2 text-gray-400 hover:text-white hover:bg-[#36393f] transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -409,14 +439,24 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <div className="h-14 px-4 flex items-center border-b border-[#202225] bg-[#36393f] shadow-md">
-          <div className="flex-1 flex items-center gap-4">
-            <h1 className="text-white font-semibold">
+        <div className="h-14 px-3 md:px-4 flex items-center border-b border-[#202225] bg-[#36393f] shadow-md gap-3">
+          {/* Hamburger menu for mobile */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 -ml-1 rounded hover:bg-[#2f3136] text-gray-400 hover:text-white transition-colors md:hidden flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="flex-1 flex items-center gap-3 min-w-0">
+            <h1 className="text-white font-semibold truncate text-sm md:text-base">
               {categories.find(c => c.id === selectedCategory)?.name || 'All Contacts'}
             </h1>
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 max-w-md hidden sm:block">
               <input
                 type="text"
                 placeholder="Search contacts..."
@@ -426,6 +466,58 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
               />
             </div>
           </div>
+
+          {/* Mobile add button */}
+          <div className="relative md:hidden">
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className="p-2 rounded hover:bg-[#2f3136] text-gray-400 hover:text-white transition-colors flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+
+            {/* Mobile Dropdown Menu */}
+            {showAddMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-[#18191c] rounded-lg shadow-lg border border-[#202225] py-2 z-50">
+                <Link
+                  href="/scan"
+                  className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
+                  onClick={() => setShowAddMenu(false)}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">Scan Business Card</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setShowAddMenu(false);
+                    setShowAddManualModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-[#36393f] hover:text-white transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-sm font-medium">Add Contact Manually</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Search Bar */}
+        <div className="px-3 py-2 bg-[#36393f] border-b border-[#202225] sm:hidden">
+          <input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#202225] text-white px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         {/* Contacts List */}
@@ -457,86 +549,102 @@ export default function DiscordStyleContacts({ contacts, error }: DiscordStyleCo
           {filteredContacts.length > 0 && (
             <div className="divide-y divide-[#202225]">
               {filteredContacts.map(contact => {
-                const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown';
-                const initials = fullName
+                // Better display name logic - prioritize name, fall back to company
+                const hasName = contact.first_name || contact.last_name;
+                const fullName = hasName
+                  ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+                  : contact.company || 'Unknown';
+
+                // For initials, use name if available, otherwise use company initials
+                const initialsSource = hasName ? fullName : (contact.company || 'U');
+                const initials = initialsSource
                   .split(' ')
                   .map(n => n[0])
                   .join('')
                   .toUpperCase()
                   .slice(0, 2);
 
+                // Different avatar color for company-only contacts
+                const avatarColor = hasName ? 'bg-blue-600' : 'bg-purple-600';
+
                 return (
-                  <div
+                  <Link
                     key={contact.id}
-                    className="px-4 py-3 hover:bg-[#32353b] transition-colors group"
+                    href={`/contacts/${contact.id}`}
+                    className="block px-3 md:px-4 py-3 hover:bg-[#32353b] active:bg-[#2a2d31] transition-colors"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       {/* Avatar */}
-                      <Link href={`/contacts/${contact.id}`} className="flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                          {initials}
-                        </div>
-                      </Link>
+                      <div className={`w-11 h-11 md:w-12 md:h-12 rounded-full ${avatarColor} flex items-center justify-center text-white font-semibold text-sm md:text-base flex-shrink-0`}>
+                        {initials}
+                      </div>
 
                       {/* Info */}
-                      <Link href={`/contacts/${contact.id}`} className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-white font-medium truncate">{fullName}</h3>
-                          {contact.favorited && <span className="text-yellow-400">⭐</span>}
+                          <h3 className="text-white font-medium truncate text-sm md:text-base">{fullName}</h3>
+                          {contact.favorited && <span className="text-yellow-400 flex-shrink-0">⭐</span>}
                           {contact.enrichment_status === 'completed' && (
-                            <span className="text-green-400" title="Enriched">
+                            <span className="text-green-400 flex-shrink-0" title="Enriched">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          {contact.job_title && <span>{contact.job_title}</span>}
-                          {contact.job_title && contact.company && <span>•</span>}
-                          {contact.company && <span>{contact.company}</span>}
+                        <div className="flex items-center gap-1.5 text-xs md:text-sm text-gray-400 truncate">
+                          {contact.job_title && <span className="truncate">{contact.job_title}</span>}
+                          {contact.job_title && contact.company && hasName && <span className="flex-shrink-0">•</span>}
+                          {contact.company && hasName && <span className="truncate">{contact.company}</span>}
+                          {!hasName && contact.job_title && <span className="truncate">{contact.job_title}</span>}
                         </div>
-                      </Link>
+                      </div>
 
-                      {/* Quick Actions */}
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Quick Actions - Always visible on mobile, hover on desktop */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         {/* Email Button */}
-                        <button
-                          onClick={() => handleSendEmail(contact.email)}
-                          disabled={!contact.email}
-                          className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={contact.email ? `Email ${contact.email}` : 'No email available'}
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                        </button>
+                        {contact.email && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSendEmail(contact.email);
+                            }}
+                            className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors"
+                            title={`Email ${contact.email}`}
+                          >
+                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                        )}
 
                         {/* SMS Button */}
-                        <button
-                          onClick={() => handleSendSMS(contact.phone)}
-                          disabled={!contact.phone}
-                          className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={contact.phone ? `Text ${contact.phone}` : 'No phone available'}
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                          </svg>
-                        </button>
+                        {contact.phone && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSendSMS(contact.phone);
+                            }}
+                            className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors"
+                            title={`Text ${contact.phone}`}
+                          >
+                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                          </button>
+                        )}
 
-                        {/* More Options */}
-                        <Link
-                          href={`/contacts/${contact.id}`}
-                          className="p-2 rounded hover:bg-[#36393f] text-gray-400 hover:text-white transition-colors"
-                          title="View details"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {/* Arrow indicator */}
+                        <div className="p-1 text-gray-500">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
-                        </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

@@ -48,6 +48,56 @@ function extractWebsiteFromEmail(email: string): string | null {
   }
 }
 
+/**
+ * Extract company name from email domain
+ * e.g., "john@GHelectricalNYC.com" -> "GH Electrical NYC"
+ */
+function extractCompanyFromEmail(email: string): string | null {
+  try {
+    // Get the ORIGINAL case domain (don't lowercase yet)
+    const fullDomain = email.split('@')[1];
+    if (!fullDomain) return null;
+
+    const domainLower = fullDomain.toLowerCase();
+
+    // Skip free email providers
+    if (FREE_EMAIL_DOMAINS.includes(domainLower)) {
+      return null;
+    }
+
+    // Get the domain without TLD, preserving original case
+    // e.g., "GHelectricalNYC" from "GHelectricalNYC.com"
+    const domainParts = fullDomain.split('.');
+    let companyPart = domainParts[0];
+
+    // Add spaces between camelCase patterns
+    // Order matters! Process in order:
+    // 1. Lowercase followed by uppercase: "electricalNYC" -> "electrical NYC"
+    // 2. Uppercase acronym followed by lowercase: "GHelectrical" -> "GH electrical"
+    companyPart = companyPart
+      .replace(/([a-z])([A-Z])/g, '$1 $2')      // "electricalNYC" -> "electrical NYC"
+      .replace(/([A-Z]{2,})([a-z])/g, '$1 $2'); // "GHelectrical" -> "GH electrical"
+
+    // Capitalize first letter of each word (for words that might be all lowercase)
+    const formatted = companyPart
+      .split(' ')
+      .map(word => {
+        // If word is all uppercase, keep it (like "NYC", "GH")
+        if (word === word.toUpperCase() && word.length > 1) {
+          return word;
+        }
+        // Otherwise capitalize first letter
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+
+    console.log(`📧 Extracted company from email: "${email}" -> "${formatted}"`);
+    return formatted;
+  } catch {
+    return null;
+  }
+}
+
 export type ParallelEnrichmentResult = {
   success: boolean;
   // Phase 1: GMB data (PRIORITY - shown first to user)
@@ -90,11 +140,13 @@ export type EnrichmentProgressCallback = (phase: string, message: string, data?:
  * @param company - Company name to search
  * @param location - Optional location string (e.g., "New York, NY")
  * @param coordinates - Optional GPS coordinates for precise location (chain stores)
+ * @param phone - Optional phone number to extract location from area code
  */
 async function phase1_gmb(
   company: string | null,
   location: string | null,
   coordinates: { latitude: number; longitude: number } | null,
+  phone: string | null,
   onProgress?: EnrichmentProgressCallback
 ): Promise<SerpApiGMBResult | null> {
   if (!company) {
@@ -118,7 +170,7 @@ async function phase1_gmb(
     return cached;
   }
 
-  const result = await searchGoogleMapsBusiness(company, location || undefined, coordinates || undefined);
+  const result = await searchGoogleMapsBusiness(company, location || undefined, coordinates || undefined, phone || undefined);
 
   if (result.success) {
     // Cache for 14 days (GMB data changes, but not too frequently)
@@ -391,6 +443,18 @@ export async function enrichContactParallel(
       throw new Error('Contact not found');
     }
 
+    // DEBUG: Log contact data at start of enrichment
+    console.log('🚀 ENRICHMENT STARTED for contact:', contactId);
+    console.log('📋 Contact data:', {
+      firstName: contact.first_name,
+      lastName: contact.last_name,
+      company: contact.company,
+      email: contact.email,
+      phone: contact.phone,
+      jobTitle: contact.job_title,
+      website: contact.company_website,
+    });
+
     onProgress?.('start', 'Starting enrichment pipeline...');
 
     // Fetch user personalization for AI message generation (non-blocking)
@@ -402,10 +466,24 @@ export async function enrichContactParallel(
       enrichment_error: null,
     });
 
+    // Extract company from email if company is missing
+    const companyFromEmail = !contact.company && contact.email
+      ? extractCompanyFromEmail(contact.email)
+      : null;
+
+    // Use best available company name: OCR > Email domain
+    const effectiveCompany = contact.company || companyFromEmail;
+
+    console.log('🏢 Company sources:', {
+      fromOCR: contact.company,
+      fromEmail: companyFromEmail,
+      effective: effectiveCompany,
+    });
+
     // Detect if service provider FIRST (determines if we get GMB data)
     const { isServiceProvider, category } = detectServiceProvider(
       contact.job_title,
-      contact.company
+      effectiveCompany
     );
 
     // PHASE 1: GOOGLE MY BUSINESS (PRIORITY - 3-5 sec)
@@ -416,11 +494,22 @@ export async function enrichContactParallel(
       : null;
 
     const gmbData = await phase1_gmb(
-      contact.company,
+      effectiveCompany,
       contact.met_at, // Use "met at" as location hint
       coordinates, // GPS coordinates for precise location
+      contact.phone, // Use phone area code for location detection
       onProgress
     );
+
+    // DEBUG: Log GMB results
+    console.log('🏢 GMB PHASE COMPLETE:', {
+      success: gmbData?.success,
+      rating: gmbData?.rating,
+      reviewCount: gmbData?.review_count,
+      reviewsLength: gmbData?.reviews?.length || 0,
+      photosLength: gmbData?.photos?.length || 0,
+      placeId: gmbData?.place_id,
+    });
 
     // PHASE 2 & 3: Run LinkedIn, Apollo, and Deep Research in PARALLEL
     onProgress?.('parallel', 'Starting parallel enrichment (LinkedIn, Apollo, Deep Research)...');
@@ -441,19 +530,19 @@ export async function enrichContactParallel(
     });
 
     const [linkedInResult, apolloResult, deepResult] = await Promise.all([
-      // LinkedIn search
+      // LinkedIn search (use effectiveCompany for better results)
       phase2_linkedin(
         contact.first_name,
         contact.last_name,
-        contact.company,
+        effectiveCompany,
         onProgress
       ),
 
-      // Apollo enrichment (get email/phone if missing)
+      // Apollo enrichment (use effectiveCompany for better results)
       enrichWithApollo(
         contact.first_name,
         contact.last_name,
-        contact.company,
+        effectiveCompany,
         contact.email,
         contact.phone,
         onProgress
@@ -461,18 +550,38 @@ export async function enrichContactParallel(
 
       // Deep research (Perplexity, news, social, company info)
       phase3_deep(
-        contact.company,
+        effectiveCompany,
         bestWebsite,
         onProgress
       ),
     ]);
+
+    // DEBUG: Log parallel enrichment results
+    console.log('⚡ PARALLEL ENRICHMENT COMPLETE:');
+    console.log('  LinkedIn:', {
+      url: linkedInResult?.url,
+      hasSnippet: !!linkedInResult?.snippet,
+    });
+    console.log('  Apollo:', {
+      email: apolloResult?.email,
+      phone: apolloResult?.phone,
+      linkedinUrl: apolloResult?.linkedin_url,
+      hasOrg: !!apolloResult?.organization,
+    });
+    console.log('  Deep Research:', {
+      hasPerplexity: !!deepResult?.perplexityData,
+      perplexityDescription: deepResult?.perplexityData?.company_description?.slice(0, 50),
+      newsCount: deepResult?.news?.length || 0,
+      socialProfiles: deepResult?.socialProfiles ? Object.keys(deepResult.socialProfiles).filter(k => (deepResult.socialProfiles as any)[k]) : [],
+      companyInfo: !!deepResult?.companyInfo,
+    });
 
     // Generate reputation insight if we have GMB data
     let reputationInsight: any = null;
     if (gmbData?.success && gmbData.rating) {
       onProgress?.('summary', 'Generating reputation insight...');
       reputationInsight = await generateReputationInsight({
-        businessName: contact.company || '',
+        businessName: effectiveCompany || '',
         jobTitle: contact.job_title,
         serviceCategory: category || 'business',
         rating: gmbData.rating,
@@ -495,7 +604,7 @@ export async function enrichContactParallel(
       firstName: contact.first_name,
       lastName: contact.last_name,
       jobTitle: contact.job_title,
-      company: contact.company,
+      company: effectiveCompany,
       linkedInSnippet: linkedInResult?.snippet,
       companyDescription:
         deepResult.perplexityData?.company_description || deepResult.companyInfo?.description,
