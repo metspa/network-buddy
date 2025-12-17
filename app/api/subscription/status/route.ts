@@ -33,6 +33,13 @@ export async function GET() {
       );
     }
 
+    // Get user credits
+    const { data: userCredits } = await supabase
+      .from('user_credits')
+      .select('credits_balance')
+      .eq('user_id', user.id)
+      .single();
+
     return NextResponse.json({
       plan: subscription.plan_name,
       status: subscription.status,
@@ -42,6 +49,7 @@ export async function GET() {
       currentPeriodEnd: subscription.current_period_end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       trialEnd: subscription.trial_end,
+      credits: userCredits?.credits_balance || 0,
     });
   } catch (error: any) {
     console.error('Subscription status error:', error);
