@@ -19,6 +19,7 @@ type CreditsPurchaseModalProps = {
 export default function CreditsPurchaseModal({ onClose }: CreditsPurchaseModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<string>('50'); // Default to recommended
 
   const packages: Package[] = [
     {
@@ -78,13 +79,26 @@ export default function CreditsPurchaseModal({ onClose }: CreditsPurchaseModalPr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#36393f] rounded-lg max-w-4xl w-full p-6 border border-[#202225] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">Purchase Credits</h2>
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50">
+      {/* Backdrop click to close */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      {/* Modal - Full width on mobile, centered on desktop */}
+      <div className="relative bg-[#36393f] w-full sm:max-w-lg sm:mx-4 sm:rounded-xl rounded-t-2xl border-t sm:border border-[#202225] max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col animate-slide-up sm:animate-none">
+        {/* Handle bar for mobile */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-gray-500 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#202225]">
+          <div>
+            <h2 className="text-xl font-bold text-white">Buy Credits</h2>
+            <p className="text-gray-400 text-sm mt-0.5">For extra enrichments</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="p-2 -mr-2 text-gray-400 hover:text-white active:bg-[#202225] rounded-lg transition-colors"
             disabled={loading}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,79 +107,126 @@ export default function CreditsPurchaseModal({ onClose }: CreditsPurchaseModalPr
           </button>
         </div>
 
-        <p className="text-gray-300 mb-6">
-          Credits never expire and can be used for premium contact enrichments with Apollo.io data.
-          Each credit gives you access to email, phone, and professional details for one contact.
-        </p>
-
-        {error && (
-          <div className="mb-6 bg-red-900/20 border border-red-700/30 rounded-lg p-4">
-            <p className="text-red-200 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {packages.map(pkg => (
-            <div
-              key={pkg.id}
-              className={`bg-[#2c2f33] rounded-lg p-6 border-2 ${
-                pkg.recommended ? 'border-blue-500' : 'border-[#202225]'
-              } relative transition-all hover:border-blue-600`}
-            >
-              {pkg.recommended && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  BEST VALUE
-                </span>
-              )}
-
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-semibold text-white mb-2">{pkg.name}</h3>
-                <div className="text-4xl font-bold text-white mb-1">
-                  {pkg.credits}
-                </div>
-                <div className="text-gray-400 text-sm">credits</div>
-              </div>
-
-              <div className="text-center mb-4">
-                <div className="text-3xl font-bold text-white">
-                  ${pkg.price}
-                </div>
-                <div className="text-sm text-gray-400">
-                  ${pkg.pricePerCredit.toFixed(2)} per credit
-                </div>
-                {pkg.discount && (
-                  <div className="text-green-400 text-sm font-semibold mt-1">
-                    {pkg.discount}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => handlePurchase(pkg.id)}
-                disabled={loading}
-                className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                  pkg.recommended
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-[#202225] hover:bg-[#3a3d42] text-gray-200'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {loading ? 'Processing...' : 'Purchase'}
-              </button>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {error && (
+            <div className="mb-4 bg-red-900/20 border border-red-700/30 rounded-lg p-3">
+              <p className="text-red-200 text-sm">{error}</p>
             </div>
-          ))}
+          )}
+
+          {/* Package cards - Stacked on mobile */}
+          <div className="space-y-3">
+            {packages.map(pkg => (
+              <button
+                key={pkg.id}
+                onClick={() => setSelectedPackage(pkg.id)}
+                disabled={loading}
+                className={`w-full bg-[#2c2f33] rounded-xl p-4 border-2 transition-all text-left relative ${
+                  selectedPackage === pkg.id
+                    ? 'border-blue-500 ring-1 ring-blue-500/50'
+                    : 'border-[#202225] active:border-gray-500'
+                } ${loading ? 'opacity-50' : ''}`}
+              >
+                {pkg.recommended && (
+                  <span className="absolute -top-2.5 left-4 bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                    BEST VALUE
+                  </span>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Selection indicator */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      selectedPackage === pkg.id
+                        ? 'border-blue-500 bg-blue-500'
+                        : 'border-gray-500'
+                    }`}>
+                      {selectedPackage === pkg.id && (
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-lg">{pkg.credits} Credits</span>
+                        {pkg.discount && (
+                          <span className="bg-green-600/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                            {pkg.discount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-gray-400 text-sm">
+                        ${pkg.pricePerCredit.toFixed(2)} per credit
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-white font-bold text-xl">${pkg.price}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Info box */}
+          <div className="mt-4 bg-[#202225] rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-yellow-600/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.736 6.979C9.208 6.193 9.696 6 10 6c.304 0 .792.193 1.264.979a1 1 0 001.715-1.029C12.279 4.784 11.232 4 10 4s-2.279.784-2.979 1.95c-.285.475-.507 1-.67 1.55H6a1 1 0 000 2h.013a9.358 9.358 0 000 1H6a1 1 0 100 2h.351c.163.55.385 1.075.67 1.55C7.721 15.216 8.768 16 10 16s2.279-.784 2.979-1.95a1 1 0 10-1.715-1.029c-.472.786-.96.979-1.264.979-.304 0-.792-.193-1.264-.979a4.265 4.265 0 01-.264-.521H10a1 1 0 100-2H8.017a7.36 7.36 0 010-1H10a1 1 0 100-2H8.472c.08-.185.167-.36.264-.521z" />
+                </svg>
+              </div>
+              <div className="text-sm text-gray-300">
+                <strong className="text-white">Credits never expire.</strong> Use them anytime for premium enrichments beyond your monthly limit.
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div className="text-sm text-blue-200">
-              <strong>How credits work:</strong> Credits stack with your subscription. Use them when you need extra enrichments beyond your monthly limit. They never expire and can be used anytime.
-            </div>
-          </div>
+        {/* Fixed bottom action */}
+        <div className="px-5 py-4 border-t border-[#202225] bg-[#36393f]">
+          <button
+            onClick={() => handlePurchase(selectedPackage)}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 active:from-yellow-600 active:to-orange-600 text-white py-4 rounded-xl font-semibold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing...
+              </>
+            ) : (
+              <>
+                Purchase {packages.find(p => p.id === selectedPackage)?.credits} Credits - ${packages.find(p => p.id === selectedPackage)?.price}
+              </>
+            )}
+          </button>
+          <p className="text-center text-gray-500 text-xs mt-3">
+            Secure payment powered by Stripe
+          </p>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slide-up {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

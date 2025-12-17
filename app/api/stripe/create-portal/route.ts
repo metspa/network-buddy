@@ -26,7 +26,11 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
-    if (error || !subscription?.stripe_customer_id || subscription.stripe_customer_id === '') {
+    // Validate customer ID exists and is a valid Stripe customer ID (starts with 'cus_')
+    const customerId = subscription?.stripe_customer_id;
+    const isValidCustomerId = customerId && customerId.startsWith('cus_');
+
+    if (error || !isValidCustomerId) {
       return NextResponse.json(
         { error: 'No Stripe customer found. Please subscribe first.' },
         { status: 404 }

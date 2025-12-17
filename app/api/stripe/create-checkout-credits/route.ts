@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
 
     let customerId = subscription?.stripe_customer_id;
 
-    if (!customerId || customerId === '') {
+    // Create Stripe customer if doesn't exist or is invalid (must start with 'cus_')
+    const isValidCustomerId = customerId && customerId.startsWith('cus_');
+    if (!isValidCustomerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: {
