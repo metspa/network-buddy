@@ -1,12 +1,12 @@
 name: iOS Build
 
 on:
-  workflow_dispatch:  # Manual trigger from GitHub Actions tab
-  push:
-    branches: [main]
-    paths-ignore:
-      - '*.md'
-      - '.gitignore'
+  workflow_dispatch:  # Manual trigger only - using Despia for iOS builds
+  # push:
+  #   branches: [main]
+  #   paths-ignore:
+  #     - '*.md'
+  #     - '.gitignore'
 
 jobs:
   build-ios:
