@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import LogoutButton from '@/components/LogoutButton';
 import GHLIntegrationSettings from '@/components/settings/GHLIntegrationSettings';
 import PersonalizationSettings from '@/components/settings/PersonalizationSettings';
+import DeleteAccountSection from '@/components/settings/DeleteAccountSection';
 import type { GHLIntegration } from '@/lib/database/ghl-integrations';
 
 export default async function SettingsPage() {
@@ -119,6 +120,9 @@ export default async function SettingsPage() {
                 </p>
               </div>
             </div>
+
+            {/* Delete Account */}
+            <DeleteAccountSection />
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CreditsPurchaseModal from '@/components/credits/CreditsPurchaseModal';
+import { shouldHideExternalPayments, getWebPurchaseUrl } from '@/lib/utils/platform';
 
 type SubscriptionStatus = {
   plan: string;
@@ -21,9 +22,11 @@ export default function SubscriptionBanner() {
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     fetchSubscription();
+    setIsIOS(shouldHideExternalPayments());
   }, []);
 
   const fetchSubscription = async () => {
@@ -41,6 +44,12 @@ export default function SubscriptionBanner() {
   };
 
   const handleUpgrade = async () => {
+    // On iOS, redirect to web for upgrades (App Store requirement)
+    if (isIOS) {
+      window.open(getWebPurchaseUrl() + '/pricing', '_blank');
+      return;
+    }
+
     setUpgrading(true);
     try {
       const response = await fetch('/api/stripe/create-checkout', {
@@ -63,6 +72,12 @@ export default function SubscriptionBanner() {
   };
 
   const handleManageSubscription = async () => {
+    // On iOS, redirect to web for subscription management (App Store requirement)
+    if (isIOS) {
+      window.open(getWebPurchaseUrl() + '/dashboard', '_blank');
+      return;
+    }
+
     try {
       const response = await fetch('/api/stripe/create-portal', {
         method: 'POST',

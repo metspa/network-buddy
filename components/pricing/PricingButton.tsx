@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { shouldHideExternalPayments, getWebPurchaseUrl } from '@/lib/utils/platform';
 
 type PricingButtonProps = {
   plan: 'free' | 'starter' | 'growth';
@@ -12,12 +13,23 @@ type PricingButtonProps = {
 
 export default function PricingButton({ plan, cta, featured }: PricingButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setIsIOS(shouldHideExternalPayments());
+  }, []);
 
   const handleClick = async () => {
     if (plan === 'free') {
       // Redirect to signup for free plan
       router.push('/auth/signup');
+      return;
+    }
+
+    // On iOS, redirect to web for paid plans (App Store requirement)
+    if (isIOS) {
+      window.open(getWebPurchaseUrl() + '/pricing', '_blank');
       return;
     }
 
