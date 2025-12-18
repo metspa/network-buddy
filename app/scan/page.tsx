@@ -8,6 +8,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import ImagePreview from '@/components/camera/ImagePreview';
 import EnrichmentProgress from '@/components/enrichment/EnrichmentProgress';
 import CreditsPurchaseModal from '@/components/credits/CreditsPurchaseModal';
+import { shouldHideExternalPayments, getWebPurchaseUrl } from '@/lib/utils/platform';
 import type { GeoLocation } from '@/lib/services/geolocation';
 
 type SubscriptionInfo = {
@@ -702,59 +703,81 @@ export default function ScanPage() {
             </div>
 
             <div className="space-y-3">
-              {/* Upgrade button - only show if not on highest plan */}
-              {currentSubscription?.plan !== 'growth' && (
-                <button
-                  onClick={async () => {
-                    setUpgradeLoading(true);
-                    const nextPlan = currentSubscription?.plan === 'starter' ? 'growth' : 'starter';
-                    try {
-                      const response = await fetch('/api/stripe/create-checkout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ plan: nextPlan }),
-                      });
-                      const data = await response.json();
-                      if (data.url) {
-                        window.location.href = data.url;
-                      } else {
-                        alert('Failed to start upgrade. Please try again.');
-                        setUpgradeLoading(false);
-                      }
-                    } catch (error) {
-                      console.error('Upgrade error:', error);
-                      alert('Failed to start upgrade. Please try again.');
-                      setUpgradeLoading(false);
-                    }
-                  }}
-                  disabled={upgradeLoading}
-                  className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
-                >
-                  {upgradeLoading ? 'Loading...' : (
-                    currentSubscription?.plan === 'starter'
-                      ? 'Upgrade to Growth - $29/mo'
-                      : 'Upgrade to Starter - $9/mo'
+              {/* iOS: Show web redirect message */}
+              {shouldHideExternalPayments() ? (
+                <>
+                  <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-4 mb-2">
+                    <p className="text-violet-300 text-sm text-center">
+                      To upgrade or purchase credits, please visit our website. Your account will sync automatically.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => window.open(getWebPurchaseUrl() + '/pricing', '_blank')}
+                    className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open Website to Upgrade
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Upgrade button - only show if not on highest plan */}
+                  {currentSubscription?.plan !== 'growth' && (
+                    <button
+                      onClick={async () => {
+                        setUpgradeLoading(true);
+                        const nextPlan = currentSubscription?.plan === 'starter' ? 'growth' : 'starter';
+                        try {
+                          const response = await fetch('/api/stripe/create-checkout', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ plan: nextPlan }),
+                          });
+                          const data = await response.json();
+                          if (data.url) {
+                            window.location.href = data.url;
+                          } else {
+                            alert('Failed to start upgrade. Please try again.');
+                            setUpgradeLoading(false);
+                          }
+                        } catch (error) {
+                          console.error('Upgrade error:', error);
+                          alert('Failed to start upgrade. Please try again.');
+                          setUpgradeLoading(false);
+                        }
+                      }}
+                      disabled={upgradeLoading}
+                      className="w-full py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-all"
+                    >
+                      {upgradeLoading ? 'Loading...' : (
+                        currentSubscription?.plan === 'starter'
+                          ? 'Upgrade to Growth - $29/mo'
+                          : 'Upgrade to Starter - $9/mo'
+                      )}
+                    </button>
                   )}
-                </button>
-              )}
 
-              {/* Buy Credits button */}
-              <button
-                onClick={() => {
-                  setShowUpgradeModal(false);
-                  setShowCreditsModal(true);
-                }}
-                className={`w-full py-3 ${
-                  currentSubscription?.plan === 'growth'
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400'
-                    : 'bg-gradient-to-r from-yellow-600/20 to-orange-600/20 hover:from-yellow-600/30 hover:to-orange-600/30 border border-yellow-600/30'
-                } text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2`}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.736 6.979C9.208 6.193 9.696 6 10 6c.304 0 .792.193 1.264.979a1 1 0 001.715-1.029C12.279 4.784 11.232 4 10 4s-2.279.784-2.979 1.95c-.285.475-.507 1-.67 1.55H6a1 1 0 000 2h.013a9.358 9.358 0 000 1H6a1 1 0 100 2h.351c.163.55.385 1.075.67 1.55C7.721 15.216 8.768 16 10 16s2.279-.784 2.979-1.95a1 1 0 10-1.715-1.029c-.472.786-.96.979-1.264.979-.304 0-.792-.193-1.264-.979a4.265 4.265 0 01-.264-.521H10a1 1 0 100-2H8.017a7.36 7.36 0 010-1H10a1 1 0 100-2H8.472c.08-.185.167-.36.264-.521z" />
-                </svg>
-                Buy Credits
-              </button>
+                  {/* Buy Credits button */}
+                  <button
+                    onClick={() => {
+                      setShowUpgradeModal(false);
+                      setShowCreditsModal(true);
+                    }}
+                    className={`w-full py-3 ${
+                      currentSubscription?.plan === 'growth'
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400'
+                        : 'bg-gradient-to-r from-yellow-600/20 to-orange-600/20 hover:from-yellow-600/30 hover:to-orange-600/30 border border-yellow-600/30'
+                    } text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2`}
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.736 6.979C9.208 6.193 9.696 6 10 6c.304 0 .792.193 1.264.979a1 1 0 001.715-1.029C12.279 4.784 11.232 4 10 4s-2.279.784-2.979 1.95c-.285.475-.507 1-.67 1.55H6a1 1 0 000 2h.013a9.358 9.358 0 000 1H6a1 1 0 100 2h.351c.163.55.385 1.075.67 1.55C7.721 15.216 8.768 16 10 16s2.279-.784 2.979-1.95a1 1 0 10-1.715-1.029c-.472.786-.96.979-1.264.979-.304 0-.792-.193-1.264-.979a4.265 4.265 0 01-.264-.521H10a1 1 0 100-2H8.017a7.36 7.36 0 010-1H10a1 1 0 100-2H8.472c.08-.185.167-.36.264-.521z" />
+                    </svg>
+                    Buy Credits
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={() => {
