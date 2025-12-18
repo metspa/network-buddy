@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContacts, createContact } from '@/lib/database/contacts';
 import { createClient } from '@/lib/supabase/server';
 import { canUserEnrich, decrementUsage } from '@/lib/services/usage-limiter';
+import { sendScanLimitEmail } from '@/lib/services/email';
 
 /**
  * GET /api/contacts
@@ -117,6 +118,21 @@ export async function POST(request: NextRequest) {
     try {
       await decrementUsage(user.id, contact.id, false);
       console.log('✅ Usage decremented for user:', user.id);
+
+      // Check if user just used their last scan (send upgrade reminder email)
+      // They had 1 scan remaining AND 0 credits, so this was their last
+      const wasLastScan =
+        usageCheck.subscription.scansRemaining === 1 &&
+        usageCheck.credits.balance === 0;
+
+      if (wasLastScan && user.email) {
+        // Send email in background (don't block response)
+        const userName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+        sendScanLimitEmail(user.email, userName).catch((emailError) => {
+          console.error('Failed to send scan limit email:', emailError);
+        });
+        console.log('📧 Queued upgrade reminder email for:', user.email);
+      }
     } catch (usageError) {
       console.error('Failed to decrement usage:', usageError);
       // Don't fail the contact creation if usage tracking fails
