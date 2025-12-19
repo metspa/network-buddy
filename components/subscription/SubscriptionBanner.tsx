@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import CreditsPurchaseModal from '@/components/credits/CreditsPurchaseModal';
-import { shouldHideExternalPayments, getWebPurchaseUrl } from '@/lib/utils/platform';
 
 type SubscriptionStatus = {
   plan: string;
@@ -20,13 +17,9 @@ type SubscriptionStatus = {
 export default function SubscriptionBanner() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState(false);
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     fetchSubscription();
-    setIsIOS(shouldHideExternalPayments());
   }, []);
 
   const fetchSubscription = async () => {
@@ -43,57 +36,14 @@ export default function SubscriptionBanner() {
     }
   };
 
-  const handleUpgrade = async () => {
-    // On iOS, redirect to web for upgrades (App Store requirement)
-    if (isIOS) {
-      window.open(getWebPurchaseUrl() + '/pricing', '_blank');
-      return;
-    }
-
-    setUpgrading(true);
-    try {
-      const response = await fetch('/api/stripe/create-checkout', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Failed to start upgrade. Please try again.');
-        setUpgrading(false);
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      alert('Failed to start upgrade. Please try again.');
-      setUpgrading(false);
-    }
+  const handleUpgrade = () => {
+    // Always open pricing page in external browser
+    window.open('https://networkbuddy.io/pricing', '_blank');
   };
 
-  const handleManageSubscription = async () => {
-    // On iOS, redirect to web for subscription management (App Store requirement)
-    if (isIOS) {
-      window.open(getWebPurchaseUrl() + '/dashboard', '_blank');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/stripe/create-portal', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Failed to open billing portal. Please try again.');
-      }
-    } catch (error) {
-      console.error('Portal error:', error);
-      alert('Failed to open billing portal. Please try again.');
-    }
+  const handleManageSubscription = () => {
+    // Open pricing page for subscription management
+    window.open('https://networkbuddy.io/pricing', '_blank');
   };
 
   if (loading) {
@@ -132,10 +82,9 @@ export default function SubscriptionBanner() {
           {isFree ? (
             <button
               onClick={handleUpgrade}
-              disabled={upgrading}
-              className="bg-[#3A83FE] hover:bg-[#2563eb] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#3A83FE] hover:bg-[#2563eb] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
-              {upgrading ? 'Loading...' : 'Upgrade to Pro'}
+              Upgrade to Pro
             </button>
           ) : (
             <button
@@ -170,7 +119,10 @@ export default function SubscriptionBanner() {
       {isAtLimit && (
         <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mt-3">
           <p className="text-red-200 text-sm">
-            You've reached your monthly scan limit. {isFree ? 'Upgrade to Pro for 50 scans/month.' : 'Your limit will reset at the end of your billing period.'}
+            You've reached your scan limit.{' '}
+            <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
+              Upgrade to continue
+            </button>
           </p>
         </div>
       )}
@@ -178,43 +130,12 @@ export default function SubscriptionBanner() {
       {!isAtLimit && isNearLimit && isFree && (
         <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3 mt-3">
           <p className="text-yellow-200 text-sm">
-            You're running low on scans. Upgrade to Pro for 50 scans/month.
+            You're running low on scans.{' '}
+            <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
+              Upgrade for more
+            </button>
           </p>
         </div>
-      )}
-
-      {/* Buy Credits Section - Hidden on iOS (App Store compliance) */}
-      {!isIOS && (
-        <div className="mt-3 pt-3 border-t border-[#202225]">
-          <button
-            onClick={() => setShowCreditsModal(true)}
-            className="w-full flex items-center justify-between bg-gradient-to-r from-yellow-600/10 to-orange-600/10 hover:from-yellow-600/20 hover:to-orange-600/20 active:from-yellow-600/30 active:to-orange-600/30 border border-yellow-600/30 rounded-lg px-3 py-2.5 transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.736 6.979C9.208 6.193 9.696 6 10 6c.304 0 .792.193 1.264.979a1 1 0 001.715-1.029C12.279 4.784 11.232 4 10 4s-2.279.784-2.979 1.95c-.285.475-.507 1-.67 1.55H6a1 1 0 000 2h.013a9.358 9.358 0 000 1H6a1 1 0 100 2h.351c.163.55.385 1.075.67 1.55C7.721 15.216 8.768 16 10 16s2.279-.784 2.979-1.95a1 1 0 10-1.715-1.029c-.472.786-.96.979-1.264.979-.304 0-.792-.193-1.264-.979a4.265 4.265 0 01-.264-.521H10a1 1 0 100-2H8.017a7.36 7.36 0 010-1H10a1 1 0 100-2H8.472c.08-.185.167-.36.264-.521z" />
-                </svg>
-              </div>
-              <div className="text-left">
-                <div className="text-white text-sm font-medium">Buy Credits</div>
-                <div className="text-gray-400 text-xs">
-                  {subscription.credits !== undefined && subscription.credits > 0
-                    ? `${subscription.credits} available`
-                    : 'Extra enrichments'}
-                </div>
-              </div>
-            </div>
-            <svg className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Credits Purchase Modal */}
-      {showCreditsModal && !isIOS && (
-        <CreditsPurchaseModal onClose={() => setShowCreditsModal(false)} />
       )}
     </div>
   );
