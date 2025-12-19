@@ -43,14 +43,19 @@ export function isIOSWebView(): boolean {
   const userAgent = window.navigator.userAgent.toLowerCase();
 
   // iOS WebView indicators:
-  // - No Safari in user agent but has AppleWebKit
-  // - Or running in standalone mode
+  // Real Safari browser has "Version/X.X" AND "Safari/XXX" in user agent
+  // WebViews typically have AppleWebKit but missing "Version/" or proper Safari identifier
   const hasAppleWebKit = userAgent.includes('applewebkit');
-  const hasSafari = userAgent.includes('safari');
-  const hasChrome = userAgent.includes('crome') || userAgent.includes('crios');
+  const hasVersion = userAgent.includes('version/');
+  const hasSafariIdentifier = /safari\/\d/.test(userAgent);
+  const hasChrome = userAgent.includes('chrome') || userAgent.includes('crios');
+  const hasFirefox = userAgent.includes('fxios');
 
-  // WebView: Has WebKit but not Safari browser (and not Chrome)
-  const isWebView = hasAppleWebKit && !hasSafari && !hasChrome;
+  // It's a real browser if it has Version/ AND Safari/XXX (Safari) or is Chrome/Firefox
+  const isRealBrowser = (hasVersion && hasSafariIdentifier) || hasChrome || hasFirefox;
+
+  // WebView: Has WebKit but NOT a real browser
+  const isWebView = hasAppleWebKit && !isRealBrowser;
 
   // Also check for standalone mode which indicates native app wrapper
   return isWebView || isIOSStandalone();
