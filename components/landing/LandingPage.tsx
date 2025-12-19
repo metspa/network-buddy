@@ -1,12 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PricingButton from '@/components/pricing/PricingButton';
+import { shouldHideExternalPayments } from '@/lib/utils/platform';
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [hidePayments, setHidePayments] = useState(false);
+
+  // Check if we should hide payments (iOS WebView/native)
+  useEffect(() => {
+    setHidePayments(shouldHideExternalPayments());
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -35,7 +42,7 @@ export default function LandingPage() {
         <ul className="hidden md:flex gap-8 list-none">
           <li><a href="#product" className="text-[#A1A09E] no-underline text-[0.95rem] hover:text-[#F3F3F2] transition-colors">Product</a></li>
           <li><a href="#how-it-works" className="text-[#A1A09E] no-underline text-[0.95rem] hover:text-[#F3F3F2] transition-colors">How it works</a></li>
-          <li><a href="#pricing" className="text-[#A1A09E] no-underline text-[0.95rem] hover:text-[#F3F3F2] transition-colors">Pricing</a></li>
+          {!hidePayments && <li><a href="#pricing" className="text-[#A1A09E] no-underline text-[0.95rem] hover:text-[#F3F3F2] transition-colors">Pricing</a></li>}
         </ul>
         <div className="flex gap-2 sm:gap-4 items-center">
           <Link href="/auth/login" className="px-3 sm:px-5 py-2 sm:py-3 rounded-lg text-sm sm:text-[0.95rem] font-semibold cursor-pointer transition-all border-none no-underline bg-transparent text-[#F3F3F2] border border-[#2A2A2A] hover:border-[#3A83FE]">
@@ -1015,7 +1022,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing - Hidden on iOS to comply with App Store guidelines */}
+      {!hidePayments && (
       <section id="pricing" className="max-w-[1200px] mx-auto px-4 sm:px-[5%] py-12 sm:py-16 md:py-24 relative">
         {/* Background glow effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1233,6 +1241,7 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
+      )}
 
       {/* FAQ */}
       <section className="max-w-[1200px] mx-auto px-4 sm:px-[5%] py-12 sm:py-16 md:py-24">
@@ -1286,7 +1295,7 @@ export default function LandingPage() {
           <div>
             <h4 className="mb-3 sm:mb-4 text-xs sm:text-sm uppercase tracking-[0.1em] text-[#A1A09E] font-bold">Product</h4>
             <ul className="list-none space-y-2 sm:space-y-3">
-              {['Features', 'Pricing', 'Integrations', 'Mobile app', 'API'].map((item) => (
+              {['Features', 'Pricing', 'Integrations', 'Mobile app', 'API'].filter(item => !(hidePayments && item === 'Pricing')).map((item) => (
                 <li key={item}><a href="#" className="text-sm sm:text-base text-[#A1A09E] no-underline hover:text-[#F3F3F2] transition-colors">{item}</a></li>
               ))}
             </ul>
