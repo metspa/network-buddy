@@ -100,17 +100,13 @@ export function isNativeApp(): boolean {
 
 /**
  * Check if external payments (Stripe) should be hidden
- * Hide on iOS native apps, WebViews (Despia), and standalone PWAs
+ * Hide on ALL iOS devices to comply with App Store guidelines
+ * Users on iOS can purchase via desktop web
  */
 export function shouldHideExternalPayments(): boolean {
-  // Hide payments on native iOS (Capacitor)
-  if (isNativeIOS()) return true;
-
-  // Hide payments in iOS WebView (Despia-built apps)
-  if (isIOSWebView()) return true;
-
-  // Hide payments in iOS standalone PWA mode
-  if (isIOSDevice() && isIOSStandalone()) return true;
+  // Hide payments on ALL iOS devices for App Store compliance
+  // This includes Safari, WebView, PWA, and native apps
+  if (isIOSDevice()) return true;
 
   return false;
 }
