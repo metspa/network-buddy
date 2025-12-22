@@ -100,15 +100,13 @@ export function isNativeApp(): boolean {
 
 /**
  * Check if external payments (Stripe) should be hidden
- * Hide on ALL iOS devices to comply with App Store guidelines
- * Users on iOS can purchase via desktop web
+ * Only hide when inside the iOS app (WebView/PWA/native), NOT in Safari
+ * Safari is where users go to make purchases - they should be able to checkout there
  */
 export function shouldHideExternalPayments(): boolean {
-  // Hide payments on ALL iOS devices for App Store compliance
-  // This includes Safari, WebView, PWA, and native apps
-  if (isIOSDevice()) return true;
-
-  return false;
+  // Only hide payments inside iOS WebView/PWA/native app
+  // Allow payments in Safari (where users are redirected to purchase)
+  return isIOSWebView();
 }
 
 /**

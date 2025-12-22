@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { shouldHideExternalPayments, getWebPurchaseUrl } from '@/lib/utils/platform';
+import { isIOSWebView } from '@/lib/utils/platform';
 
 type PricingButtonProps = {
   plan: 'free' | 'starter' | 'growth';
@@ -13,11 +13,13 @@ type PricingButtonProps = {
 
 export default function PricingButton({ plan, cta, featured }: PricingButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isInApp, setIsInApp] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    setIsIOS(shouldHideExternalPayments());
+    // Only redirect if inside iOS app (WebView/PWA)
+    // In Safari, proceed with normal Stripe checkout
+    setIsInApp(isIOSWebView());
   }, []);
 
   const handleClick = async () => {
@@ -27,9 +29,10 @@ export default function PricingButton({ plan, cta, featured }: PricingButtonProp
       return;
     }
 
-    // On iOS, redirect to web for paid plans (App Store requirement)
-    if (isIOS) {
-      window.open(getWebPurchaseUrl() + '/pricing', '_blank');
+    // Inside iOS app - this shouldn't happen as pricing is hidden, but handle gracefully
+    if (isInApp) {
+      // Redirect to Safari for purchase
+      window.location.href = 'https://networkbuddy.io/pricing';
       return;
     }
 

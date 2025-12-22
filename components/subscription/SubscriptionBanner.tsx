@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isIOSDevice } from '@/lib/utils/platform';
+
+const PRICING_URL = 'https://networkbuddy.io/pricing';
 
 type SubscriptionStatus = {
   plan: string;
@@ -17,9 +20,12 @@ type SubscriptionStatus = {
 export default function SubscriptionBanner() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     fetchSubscription();
+    // Check if on iOS device - we hide ALL pricing/upgrade buttons on iOS for App Store compliance
+    setIsIOS(isIOSDevice());
   }, []);
 
   const fetchSubscription = async () => {
@@ -37,13 +43,15 @@ export default function SubscriptionBanner() {
   };
 
   const handleUpgrade = () => {
-    // Always open pricing page in external browser
-    window.open('https://networkbuddy.io/pricing', '_blank');
+    // On iOS, this button is hidden entirely for App Store compliance
+    // On other platforms, open pricing page
+    window.open(PRICING_URL, '_blank');
   };
 
   const handleManageSubscription = () => {
-    // Open pricing page for subscription management
-    window.open('https://networkbuddy.io/pricing', '_blank');
+    // On iOS, this button is hidden entirely for App Store compliance
+    // On other platforms, open pricing page
+    window.open(PRICING_URL, '_blank');
   };
 
   if (loading) {
@@ -78,23 +86,26 @@ export default function SubscriptionBanner() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {isFree ? (
-            <button
-              onClick={handleUpgrade}
-              className="bg-[#3A83FE] hover:bg-[#2563eb] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              Upgrade to Pro
-            </button>
-          ) : (
-            <button
-              onClick={handleManageSubscription}
-              className="bg-[#36393f] hover:bg-[#40444b] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              Manage Subscription
-            </button>
-          )}
-        </div>
+        {/* Hide ALL upgrade/pricing buttons on iOS for App Store compliance (Guideline 3.1.1) */}
+        {!isIOS && (
+          <div className="flex items-center gap-2">
+            {isFree ? (
+              <button
+                onClick={handleUpgrade}
+                className="bg-[#3A83FE] hover:bg-[#2563eb] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Upgrade to Pro
+              </button>
+            ) : (
+              <button
+                onClick={handleManageSubscription}
+                className="bg-[#36393f] hover:bg-[#40444b] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Manage Subscription
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Usage Bar */}
@@ -115,14 +126,20 @@ export default function SubscriptionBanner() {
         </div>
       </div>
 
-      {/* Warning Messages */}
+      {/* Warning Messages - Hide upgrade links on iOS for App Store compliance */}
       {isAtLimit && (
         <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mt-3">
           <p className="text-red-200 text-sm">
-            You've reached your scan limit.{' '}
-            <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
-              Upgrade to continue
-            </button>
+            {isIOS ? (
+              "You've reached your scan limit."
+            ) : (
+              <>
+                You've reached your scan limit.{' '}
+                <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
+                  Upgrade to continue
+                </button>
+              </>
+            )}
           </p>
         </div>
       )}
@@ -130,10 +147,16 @@ export default function SubscriptionBanner() {
       {!isAtLimit && isNearLimit && isFree && (
         <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3 mt-3">
           <p className="text-yellow-200 text-sm">
-            You're running low on scans.{' '}
-            <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
-              Upgrade for more
-            </button>
+            {isIOS ? (
+              "You're running low on scans."
+            ) : (
+              <>
+                You're running low on scans.{' '}
+                <button onClick={handleUpgrade} className="text-[#3A83FE] hover:underline font-medium">
+                  Upgrade for more
+                </button>
+              </>
+            )}
           </p>
         </div>
       )}

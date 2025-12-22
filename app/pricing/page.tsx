@@ -4,24 +4,25 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { shouldHideExternalPayments } from '@/lib/utils/platform';
+import { isIOSWebView } from '@/lib/utils/platform';
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [isIOS, setIsIOS] = useState(false);
+  const [isInApp, setIsInApp] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if iOS - redirect to home if so (App Store compliance)
-    if (shouldHideExternalPayments()) {
-      setIsIOS(true);
+    // Only redirect if inside the iOS app (WebView/PWA)
+    // Allow pricing page in Safari/Chrome - that's where users go to purchase
+    if (isIOSWebView()) {
+      setIsInApp(true);
       router.push('/');
     }
   }, [router]);
 
-  // Don't render pricing on iOS
-  if (isIOS) {
+  // Don't render pricing inside the iOS app - redirect to Safari
+  if (isInApp) {
     return (
       <div className="min-h-screen bg-[#030303] flex items-center justify-center">
         <div className="text-center">
@@ -97,25 +98,6 @@ export default function PricingPage() {
   };
 
   const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      description: 'Perfect for trying it out',
-      price: '$0',
-      period: 'forever',
-      features: [
-        '5 contacts total (one-time)',
-        'AI-powered card scanning',
-        'LinkedIn profile matching',
-        'AI email & phone finder',
-        'Company intel & research',
-        'Google reviews & photos',
-        'AI conversation starters',
-        'CSV export',
-      ],
-      cta: 'Get Started Free',
-      popular: false,
-    },
     {
       id: 'starter',
       name: 'Starter',
@@ -242,7 +224,7 @@ export default function PricingPage() {
 
       {/* Pricing Cards */}
       <section className="relative z-10 max-w-6xl mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
             <div
               key={plan.id}
@@ -290,15 +272,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                {plan.id === 'free' ? (
-                  <Link
-                    href="/auth/signup"
-                    className="block w-full py-3.5 px-6 text-center rounded-xl font-semibold transition-all bg-[#1A1A1A] text-white border border-[#2A2A2A] hover:border-[#3A83FE] hover:shadow-[0_0_20px_rgba(58,131,254,0.15)]"
-                  >
-                    {plan.cta}
-                  </Link>
-                ) : (
-                  <button
+                <button
                     onClick={() => handleCheckout(plan.id as 'starter' | 'growth')}
                     disabled={loading === plan.id}
                     className={`w-full py-3.5 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
@@ -324,7 +298,6 @@ export default function PricingPage() {
                       </>
                     )}
                   </button>
-                )}
               </div>
             </div>
           ))}

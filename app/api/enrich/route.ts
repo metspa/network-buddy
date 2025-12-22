@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { enrichContact } from '@/lib/enrichment/pipeline';
 import { canUserEnrich, decrementUsage } from '@/lib/services/usage-limiter';
+import { sendScanLimitEmail } from '@/lib/services/email';
 
 /**
  * POST /api/enrich
@@ -67,6 +68,28 @@ export async function POST(request: NextRequest) {
     // CRITICAL: Decrement usage after successful enrichment
     try {
       await decrementUsage(user.id, contactId, result.usedApollo || false);
+
+      // Check if user just hit their limit - send email notification
+      const postUsageCheck = await canUserEnrich(user.id);
+      if (!postUsageCheck.allowed && postUsageCheck.subscription.plan === 'free') {
+        // User just used their last free scan - send upgrade email
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+
+        // Send email in background (don't await to avoid slowing response)
+        sendScanLimitEmail(user.email!, profile?.full_name || null)
+          .then((sent) => {
+            if (sent) {
+              console.log('✅ Scan limit email triggered for:', user.email);
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to send scan limit email:', err);
+          });
+      }
     } catch (usageError) {
       console.error('Failed to decrement usage:', usageError);
       // Don't fail the enrichment if usage tracking fails

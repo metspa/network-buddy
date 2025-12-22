@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PricingButton from '@/components/pricing/PricingButton';
-import { shouldHideExternalPayments } from '@/lib/utils/platform';
+import { isIOSWebView } from '@/lib/utils/platform';
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [hidePayments, setHidePayments] = useState(false);
 
-  // Check if we should hide payments (iOS WebView/native)
+  // Only hide payments inside the iOS app (WebView/PWA), not in Safari
+  // Safari is where users go to make purchases after being redirected from the app
   useEffect(() => {
-    setHidePayments(shouldHideExternalPayments());
+    setHidePayments(isIOSWebView());
   }, []);
 
   const toggleFaq = (index: number) => {
@@ -1022,9 +1023,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing - Hidden on iOS to comply with App Store guidelines */}
+      {/* Pricing - Hidden on mobile and iOS app for App Store compliance */}
       {!hidePayments && (
-      <section id="pricing" className="max-w-[1200px] mx-auto px-4 sm:px-[5%] py-12 sm:py-16 md:py-24 relative">
+      <section id="pricing" className="hidden md:block max-w-[1200px] mx-auto px-4 sm:px-[5%] py-12 sm:py-16 md:py-24 relative">
         {/* Background glow effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#3A83FE] opacity-[0.03] blur-[120px] rounded-full" />
@@ -1295,7 +1296,7 @@ export default function LandingPage() {
           <div>
             <h4 className="mb-3 sm:mb-4 text-xs sm:text-sm uppercase tracking-[0.1em] text-[#A1A09E] font-bold">Product</h4>
             <ul className="list-none space-y-2 sm:space-y-3">
-              {['Features', 'Pricing', 'Integrations', 'Mobile app', 'API'].filter(item => !(hidePayments && item === 'Pricing')).map((item) => (
+              {['Features', 'Integrations', 'Mobile app', 'API'].map((item) => (
                 <li key={item}><a href="#" className="text-sm sm:text-base text-[#A1A09E] no-underline hover:text-[#F3F3F2] transition-colors">{item}</a></li>
               ))}
             </ul>
