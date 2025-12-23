@@ -102,11 +102,36 @@ export function isNativeApp(): boolean {
  * Check if external payments (Stripe) should be hidden
  * Only hide when inside the iOS app (WebView/PWA/native), NOT in Safari
  * Safari is where users go to make purchases - they should be able to checkout there
+ *
+ * IMPORTANT: This function is MORE aggressive to ensure App Store compliance.
+ * On iOS, we ONLY allow external payments if we're DEFINITELY in a real browser.
  */
 export function shouldHideExternalPayments(): boolean {
-  // Only hide payments inside iOS WebView/PWA/native app
-  // Allow payments in Safari (where users are redirected to purchase)
-  return isIOSWebView();
+  if (typeof window === 'undefined') return false;
+
+  // If not iOS device, allow external payments (Android/Web)
+  if (!isIOSDevice()) return false;
+
+  // On iOS, we must be VERY careful. Only allow external payments in REAL browsers.
+  // Real Safari has both "Version/X.X" AND "Safari/XXX" in user agent
+  // WebViews, PWAs, and native apps do NOT have these identifiers
+  const userAgent = window.navigator.userAgent.toLowerCase();
+
+  // Check for real Safari browser indicators
+  const hasVersion = userAgent.includes('version/');
+  const hasSafariIdentifier = /safari\/\d/.test(userAgent);
+  const isRealSafari = hasVersion && hasSafariIdentifier;
+
+  // Check for Chrome on iOS (CriOS) and Firefox on iOS (FxiOS)
+  const hasChrome = userAgent.includes('crios');
+  const hasFirefox = userAgent.includes('fxios');
+
+  // It's a real browser if it matches Safari, Chrome, or Firefox patterns
+  const isRealBrowser = isRealSafari || hasChrome || hasFirefox;
+
+  // HIDE payments if we're NOT in a real browser
+  // This catches: WebViews, PWAs, Capacitor apps, and any other iOS context
+  return !isRealBrowser;
 }
 
 /**

@@ -1,9 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  // Hide footer on app pages (authenticated routes) to prevent white flash
+  // Footer is only for marketing/landing pages
+  const appRoutes = ['/dashboard', '/scan', '/contacts', '/settings', '/auth', '/support', '/contact', '/privacy', '/terms'];
+  const isAppRoute = appRoutes.some(route => pathname?.startsWith(route));
+
+  if (isAppRoute) {
+    return null;
+  }
 
   return (
     <footer className="bg-white border-t border-gray-200 py-8 px-4 mb-16">
